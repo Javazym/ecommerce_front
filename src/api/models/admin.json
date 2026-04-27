@@ -1,0 +1,103 @@
+{
+  "admin": {
+    "id": 1,
+    "username": "admin",
+    "nickname": "管理员",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
+    "role": "super_admin",
+    "roleName": "超级管理员",
+    "status": "active",
+    "lastLoginTime": "2024-03-15 10:00:00",
+    "lastLoginIp": "192.168.1.1",
+    "createdAt": "2024-01-01 10:00:00"
+  },
+  "role": {
+    "id": 1,
+    "name": "超级管理员",
+    "code": "super_admin",
+    "description": "拥有所有权限",
+    "permissions": ["*"],
+    "status": "active",
+    "createdAt": "2024-01-01 10:00:00"
+  },
+  "platformStatistics": {
+    "totalUsers": 10000,
+    "todayUsers": 100,
+    "totalMerchants": 500,
+    "todayMerchants": 10,
+    "totalOrders": 50000,
+    "todayOrders": 500,
+    "totalSales": 10000000,
+    "todaySales": 100000,
+    "totalProducts": 1000,
+    "todayProducts": 20,
+    "pendingRefunds": 10,
+    "pendingAudits": 5
+  },
+  "userStatistics": {
+    "totalUsers": 10000,
+    "activeUsers": 8000,
+    "vipUsers": 1000,
+    "newUsersToday": 100,
+    "newUsersThisWeek": 700,
+    "newUsersThisMonth": 3000
+  },
+  "financeStatistics": {
+    "totalIncome": 10000000,
+    "monthIncome": 1000000,
+    "weekIncome": 250000,
+    "todayIncome": 100000,
+    "totalOrders": 50000,
+    "averageOrderAmount": 200,
+    "totalRefund": 50000,
+    "totalCommission": 500000,
+    "pendingWithdraw": 100000
+  },
+  "banner": {
+    "id": 1,
+    "title": "新品上市",
+    "image": "https://example.com/banner1.png",
+    "link": "/product/1",
+    "type": "product",
+    "sort": 1,
+    "status": "active",
+    "startTime": "2024-01-01 00:00:00",
+    "endTime": "2024-12-31 23:59:59",
+    "clickCount": 1000,
+    "createdAt": "2024-01-01 10:00:00"
+  },
+  "notice": {
+    "id": 1,
+    "title": "系统维护通知",
+    "content": "系统将于今晚22:00-24:00进行维护",
+    "type": "system",
+    "status": "active",
+    "createdAt": "2024-03-15 10:00:00",
+    "updatedAt": "2024-03-15 10:00:00"
+  },
+  "systemSettings": {
+    "siteName": "云商城",
+    "siteLogo": "https://example.com/logo.png",
+    "siteDescription": "云商城是一个专业的电商平台",
+    "siteKeywords": "电商,购物,数码",
+    "customerService": {
+      "phone": "400-123-4567",
+      "email": "support@example.com",
+      "workTime": "9:00-21:00"
+    },
+    "orderSettings": {
+      "autoCancel": 30,
+      "autoReceive": 15,
+      "autoComment": 7
+    },
+    "refundSettings": {
+      "returnTime": 7,
+      "exchangeTime": 7
+    },
+    "paymentSettings": {
+      "alipay": true,
+      "wechat": true,
+      "unionpay": false
+    }
+  }
+}

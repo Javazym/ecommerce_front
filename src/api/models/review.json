@@ -1,0 +1,56 @@
+{
+  "review": {
+    "id": 1,
+    "orderId": 1,
+    "orderItemId": 1,
+    "productId": 1,
+    "userId": 1,
+    "userName": "用户***1",
+    "userAvatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
+    "rating": 5,
+    "content": "很好的产品，物流很快，包装完好",
+    "images": [
+      "https://example.com/review1.jpg",
+      "https://example.com/review2.jpg"
+    ],
+    "anonymous": false,
+    "likeCount": 10,
+    "reply": {
+      "content": "感谢您的评价，我们会继续努力",
+      "merchantName": "Apple官方旗舰店",
+      "createdAt": "2024-03-16 10:00:00"
+    },
+    "status": "display",
+    "createdAt": "2024-03-15 15:30:00",
+    "updatedAt": "2024-03-15 15:30:00"
+  },
+  "reviewForm": {
+    "orderId": 1,
+    "orderItemId": 1,
+    "productId": 1,
+    "rating": 5,
+    "content": "",
+    "images": [],
+    "anonymous": false
+  },
+  "reviewStatistics": {
+    "totalCount": 1000,
+    "averageRating": 4.8,
+    "fiveStarCount": 800,
+    "fourStarCount": 150,
+    "threeStarCount": 30,
+    "twoStarCount": 15,
+    "fiveStarRate": 0.8,
+    "fourStarRate": 0.15,
+    "positiveRate": 0.95,
+    "withImagesCount": 300,
+    "withAppendCount": 100
+  },
+  "reviewTag": {
+    "id": 1,
+    "productId": 1,
+    "name": "物流很快",
+    "count": 100,
+    "type": "positive"
+  }
+}

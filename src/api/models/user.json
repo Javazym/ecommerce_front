@@ -1,0 +1,57 @@
+{
+  "user": {
+    "id": 1,
+    "username": "user001",
+    "nickname": "小明",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
+    "phone": "13800138000",
+    "email": "user@example.com",
+    "gender": "male",
+    "birthday": "1995-06-15",
+    "status": "active",
+    "createdAt": "2024-01-01 10:00:00",
+    "updatedAt": "2024-03-01 15:30:00",
+    "lastLoginTime": "2024-03-10 09:20:00",
+    "lastLoginIp": "192.168.1.100",
+    "userLevel": "gold",
+    "points": 5000,
+    "balance": 1000.00
+  },
+  "userAddress": {
+    "id": 1,
+    "userId": 1,
+    "receiverName": "张三",
+    "receiverPhone": "13800138000",
+    "province": "广东省",
+    "city": "深圳市",
+    "district": "南山区",
+    "detailAddress": "科技园南路88号",
+    "postalCode": "518000",
+    "isDefault": true,
+    "createdAt": "2024-01-15 10:00:00"
+  },
+  "userForm": {
+    "username": "",
+    "password": "",
+    "nickname": "",
+    "phone": "",
+    "email": "",
+    "gender": "",
+    "birthday": ""
+  },
+  "loginForm": {
+    "username": "",
+    "password": "",
+    "verifyCode": "",
+    "rememberMe": false
+  },
+  "registerForm": {
+    "username": "",
+    "password": "",
+    "confirmPassword": "",
+    "phone": "",
+    "verifyCode": "",
+    "email": "",
+    "agreeTerms": false
+  }
+}

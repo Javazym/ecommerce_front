@@ -1,0 +1,22 @@
+{
+  "favorite": {
+    "id": 1,
+    "userId": 1,
+    "productId": 1,
+    "productName": "Apple AirPods Pro 2",
+    "productImage": "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=100",
+    "productPrice": 1899,
+    "originalPrice": 2199,
+    "merchantName": "Apple官方旗舰店",
+    "createdAt": "2024-03-15 10:00:00"
+  },
+  "favoriteForm": {
+    "userId": 1,
+    "productId": 1
+  },
+  "favoriteStatistics": {
+    "totalCount": 50,
+    "totalAmount": 50000,
+    "averagePrice": 1000
+  }
+}

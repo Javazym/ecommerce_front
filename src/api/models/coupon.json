@@ -1,0 +1,60 @@
+{
+  "coupon": {
+    "id": 1,
+    "name": "新人专享券",
+    "type": "discount",
+    "value": 100,
+    "minAmount": 500,
+    "maxDiscount": 200,
+    "totalCount": 1000,
+    "receiveCount": 500,
+    "usedCount": 200,
+    "startTime": "2024-01-01 00:00:00",
+    "endTime": "2024-12-31 23:59:59",
+    "validDays": 30,
+    "scope": "all",
+    "categoryIds": [],
+    "productIds": [],
+    "merchantId": null,
+    "status": "active",
+    "createdAt": "2024-01-01 10:00:00"
+  },
+  "userCoupon": {
+    "id": 1,
+    "userId": 1,
+    "couponId": 1,
+    "couponName": "新人专享券",
+    "type": "discount",
+    "value": 100,
+    "minAmount": 500,
+    "maxDiscount": 200,
+    "orderId": null,
+    "usedTime": null,
+    "receivedTime": "2024-03-15 10:00:00",
+    "expireTime": "2024-04-14 23:59:59",
+    "status": "unused"
+  },
+  "couponForm": {
+    "name": "",
+    "type": "discount",
+    "value": "",
+    "minAmount": "",
+    "maxDiscount": "",
+    "totalCount": "",
+    "limitPerUser": 1,
+    "startTime": "",
+    "endTime": "",
+    "validDays": "",
+    "scope": "all",
+    "categoryIds": [],
+    "productIds": []
+  },
+  "couponStatistics": {
+    "totalCount": 1000,
+    "receiveCount": 500,
+    "usedCount": 200,
+    "receiveRate": 0.5,
+    "useRate": 0.4,
+    "discountAmount": 20000
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "product": {
+    "id": 1,
+    "name": "Apple AirPods Pro 2",
+    "price": 1899,
+    "originalPrice": 2199,
+    "category": "electronics",
+    "categoryName": "数码电子",
+    "brand": "Apple",
+    "brandId": 1,
+    "image": "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=400",
+    "images": [
+      "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=400",
+      "https://images.unsplash.com/photo-1606220588914-b3aacb4d2f46?w=400",
+      "https://images.unsplash.com/photo-1606220588915-b3aacb4d2f46?w=400"
+    ],
+    "description": "主动降噪，空间音频，MagSafe充电盒",
+    "detail": "<p>详细介绍内容...</p>",
+    "isHot": true,
+    "isFeatured": true,
+    "isNew": false,
+    "isOnSale": true,
+    "rating": 4.9,
+    "sales": 5280,
+    "stock": 100,
+    "soldCount": 5280,
+    "reviewCount": 1000,
+    "favoriteCount": 2000,
+    "tags": ["降噪耳机", "蓝牙耳机", "苹果"],
+    "specifications": [
+      {
+        "name": "颜色",
+        "values": ["白色", "黑色"]
+      },
+      {
+        "name": "存储",
+        "values": ["32GB", "64GB", "128GB"]
+      }
+    ],
+    "skuList": [
+      {
+        "id": 1,
+        "skuCode": "SKU001",
+        "specs": ["白色", "32GB"],
+        "price": 1899,
+        "stock": 50,
+        "image": "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=100"
+      }
+    ],
+    "merchantId": 1,
+    "merchantName": "Apple官方旗舰店",
+    "createdAt": "2024-01-01 10:00:00",
+    "updatedAt": "2024-03-01 15:30:00"
+  },
+  "category": {
+    "id": 1,
+    "name": "数码电子",
+    "parentId": 0,
+    "level": 1,
+    "icon": "https://example.com/icon.png",
+    "image": "https://example.com/image.png",
+    "sort": 1,
+    "status": "active",
+    "children": [
+      {
+        "id": 2,
+        "name": "手机",
+        "parentId": 1,
+        "level": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "brand": {
+    "id": 1,
+    "name": "Apple",
+    "logo": "https://example.com/logo.png",
+    "description": "苹果公司",
+    "firstLetter": "A",
+    "sort": 1,
+    "status": "active"
+  },
+  "productForm": {
+    "name": "",
+    "categoryId": "",
+    "brandId": "",
+    "price": "",
+    "originalPrice": "",
+    "stock": "",
+    "description": "",
+    "detail": "",
+    "images": [],
+    "isHot": false,
+    "isFeatured": false,
+    "isNew": false,
+    "tags": []
+  },
+  "productFilter": {
+    "categories": [],
+    "brand": "",
+    "priceRange": "",
+    "rating": "",
+    "sortBy": "default",
+    "searchQuery": ""
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "cartItem": {
+    "id": 1,
+    "userId": 1,
+    "productId": 1,
+    "skuId": 1,
+    "productName": "Apple AirPods Pro 2",
+    "productImage": "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=100",
+    "skuSpecs": "白色",
+    "price": 1899,
+    "originalPrice": 2199,
+    "quantity": 1,
+    "stock": 100,
+    "selected": true,
+    "createdAt": "2024-03-15 10:00:00"
+  },
+  "cartForm": {
+    "productId": "",
+    "skuId": "",
+    "quantity": 1
+  },
+  "cartStatistics": {
+    "totalCount": 5,
+    "selectedCount": 3,
+    "totalAmount": 5697,
+    "selectedAmount": 4297,
+    "discountAmount": 1400,
+    "shippingFee": 0
+  },
+  "cartQuery": {
+    "userId": 1
+  }
+}

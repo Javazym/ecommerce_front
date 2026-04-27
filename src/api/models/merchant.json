@@ -1,0 +1,83 @@
+{
+  "merchant": {
+    "id": 1,
+    "userId": 1,
+    "storeName": "Apple官方旗舰店",
+    "storeLogo": "https://example.com/logo.png",
+    "storeBanner": "https://example.com/banner.png",
+    "storeDescription": "Apple官方旗舰店",
+    "storeType": "flagship",
+    "category": "electronics",
+    "contactName": "李经理",
+    "contactPhone": "400-123-4567",
+    "contactEmail": "store@example.com",
+    "status": "active",
+    "auditStatus": "approved",
+    "auditTime": "2024-01-01 10:00:00",
+    "rating": 4.9,
+    "sales": 100000,
+    "followers": 5000,
+    "createdAt": "2024-01-01 10:00:00",
+    "updatedAt": "2024-03-01 15:30:00"
+  },
+  "merchantForm": {
+    "storeName": "",
+    "storeType": "",
+    "category": [],
+    "contactName": "",
+    "contactPhone": "",
+    "contactEmail": "",
+    "businessLicense": "",
+    "idCardFront": "",
+    "idCardBack": ""
+  },
+  "merchantStatistics": {
+    "todaySales": 10000,
+    "todayOrders": 50,
+    "todayVisitors": 500,
+    "pendingOrders": 10,
+    "shippingOrders": 20,
+    "totalProducts": 100,
+    "onsaleProducts": 80,
+    "stockoutProducts": 5,
+    "totalIncome": 500000,
+    "withdrawable": 10000,
+    "monthSales": 300000,
+    "monthOrders": 1500
+  },
+  "financeData": {
+    "totalIncome": 500000,
+    "withdrawable": 10000,
+    "withdrawn": 490000,
+    "pendingWithdraw": 5000,
+    "monthIncome": 300000,
+    "monthOrderCount": 1500,
+    "averageOrderAmount": 200,
+    "refundAmount": 5000,
+    "commission": 15000
+  },
+  "withdrawRecord": {
+    "id": 1,
+    "merchantId": 1,
+    "amount": 10000,
+    "fee": 50,
+    "actualAmount": 9950,
+    "bankName": "中国银行",
+    "bankAccount": "6217***1234",
+    "status": "pending",
+    "createdAt": "2024-03-15 10:00:00",
+    "processedAt": null,
+    "remark": ""
+  },
+  "shopSettings": {
+    "storeName": "",
+    "storeLogo": "",
+    "storeBanner": "",
+    "storeDescription": "",
+    "autoShip": false,
+    "shipTime": 24,
+    "returnTime": 7,
+    "invoiceSupport": true,
+    "pointsRate": 1
+  }
+}
