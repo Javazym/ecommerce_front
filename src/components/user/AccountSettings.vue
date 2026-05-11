@@ -261,11 +261,11 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import userStore from '../../stores/userStore'
+import {useUserStore} from "../../stores/userStore.js"
 
 // 支付密码状态
 const hasPayPassword = ref(false)
-
+const userStore = useUserStore()
 // 通知设置
 const notificationSettings = reactive({
   enabled: true

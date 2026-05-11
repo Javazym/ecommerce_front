@@ -87,6 +87,9 @@
               <el-button size="small" @click="handleAction('confirm', order)">
                 确认收货
               </el-button>
+              <el-button size="small" @click="handleAction('refund', order)">
+                申请售后
+              </el-button>
             </template>
 
             <!-- 已完成 -->
@@ -109,6 +112,22 @@
               </el-button>
             </template>
 
+            <!-- 退款中 -->
+            <template v-if="order.status === 5">
+              <el-button size="small" type="info" disabled>退款审核中</el-button>
+              <el-button size="small" @click="goToRefundDetail(order)">退款详情</el-button>
+              <el-button size="small" @click="goToOrderDetail(order.id)">订单详情</el-button>
+            </template>
+
+            <!-- 已退款 -->
+            <template v-if="order.status === 6">
+              <el-button size="small" type="danger" plain @click="handleAction('delete', order)">
+                删除订单
+              </el-button>
+              <el-button size="small" @click="goToRefundDetail(order)">退款详情</el-button>
+              <el-button size="small" @click="goToOrderDetail(order.id)">订单详情</el-button>
+            </template>
+
             <!-- 通用 -->
             <el-button size="small" @click="goToOrderDetail(order.id)">订单详情</el-button>
           </div>
@@ -120,6 +139,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   orders: {
@@ -146,7 +166,9 @@ const getStatusText = (status) => {
     1: '待发货',
     2: '待收货',
     3: '已完成',
-    4: '已取消'
+    4: '已取消',
+    5: '退款中',
+    6: '已退款'
   }
   return textMap[status] || '未知状态'
 }
@@ -157,8 +179,10 @@ const getStatusType = (status) => {
     0: 'warning', // 待付款
     1: 'primary', // 待发货
     2: 'success', // 待收货
-    3: 'info', // 已完成
-    4: 'info' // 已取消
+    3: 'info',    // 已完成
+    4: 'info',    // 已取消
+    5: 'warning', // 退款中
+    6: 'danger'   // 已退款
   }
   return typeMap[status] || 'info'
 }
@@ -176,6 +200,18 @@ const goToProduct = (productId) => {
 // 跳转订单详情
 const goToOrderDetail = (orderId) => {
   router.push(`/order/${orderId}`)
+}
+
+// 跳转退款详情
+const goToRefundDetail = (order) => {
+  // 假设订单中有 refundId，如果没有则需要从其他地方获取
+  if (order.refundId) {
+    router.push(`/refund/${order.refundId}`)
+  } else {
+    // 如果订单中没有 refundId，可以先跳转到订单详情页查看
+    ElMessage.info('请先在订单详情中查看退款信息')
+    router.push(`/order/${order.id}`)
+  }
 }
 </script>
 

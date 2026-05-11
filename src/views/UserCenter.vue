@@ -34,26 +34,26 @@
             </div>
           </div>
           <div class="user-stats">
-            <div class="stat-item" @click="goToOrders('pending')">
-              <span class="stat-value">{{ userStore.statistics.pendingPayment }}</span>
-              <span class="stat-label">待付款</span>
-            </div>
-            <div class="stat-item" @click="goToOrders('paid')">
-              <span class="stat-value">{{ userStore.statistics.pendingShipment }}</span>
-              <span class="stat-label">待发货</span>
-            </div>
-            <div class="stat-item" @click="goToOrders('shipped')">
-              <span class="stat-value">{{ userStore.statistics.pendingReceipt }}</span>
-              <span class="stat-label">待收货</span>
-            </div>
-            <div class="stat-item" @click="goToCoupons">
-              <span class="stat-value">{{ userStore.statistics.couponCount }}</span>
-              <span class="stat-label">优惠券</span>
-            </div>
-            <div class="stat-item" @click="goToFavorites">
-              <span class="stat-value">{{ userStore.statistics.favoriteCount }}</span>
-              <span class="stat-label">收藏商品</span>
-            </div>
+<!--            <div class="stat-item" @click="goToOrders('pending')">-->
+<!--              <span class="stat-value">{{ userStore.statistics.pendingPayment }}</span>-->
+<!--              <span class="stat-label">待付款</span>-->
+<!--            </div>-->
+<!--            <div class="stat-item" @click="goToOrders('paid')">-->
+<!--              <span class="stat-value">{{ userStore.statistics.pendingShipment }}</span>-->
+<!--              <span class="stat-label">待发货</span>-->
+<!--            </div>-->
+<!--            <div class="stat-item" @click="goToOrders('shipped')">-->
+<!--              <span class="stat-value">{{ userStore.statistics.pendingReceipt }}</span>-->
+<!--              <span class="stat-label">待收货</span>-->
+<!--            </div>-->
+<!--            <div class="stat-item" @click="goToCoupons">-->
+<!--              <span class="stat-value">{{ userStore.statistics.couponCount }}</span>-->
+<!--              <span class="stat-label">优惠券</span>-->
+<!--            </div>-->
+<!--            <div class="stat-item" @click="goToFavorites">-->
+<!--              <span class="stat-value">{{ userStore.statistics.favoriteCount }}</span>-->
+<!--              <span class="stat-label">收藏商品</span>-->
+<!--            </div>-->
           </div>
         </div>
 
@@ -142,7 +142,7 @@ import MerchantApplication from '../components/user/MerchantApplication.vue'
 import FavoriteManagement from '../components/user/FavoriteManagement.vue'
 import AccountSettings from '../components/user/AccountSettings.vue'
 import CouponManagement from '../components/user/CouponManagement.vue'
-import userStore from '../stores/userStore'
+import {useUserStore} from "../stores/userStore.js"
 import orderStore from '../stores/orderStore'
 import AddressManagement from "../components/user/AddressManagement.vue";
 import user from "../api/user.js";
@@ -150,7 +150,7 @@ import {getCurrentUser} from "../api/modules/user.js";
 import {getAddressList} from "../api/modules/address.js";
 
 const router = useRouter()
-
+const userStore = useUserStore()
 // 当前菜单
 const activeMenu = ref('profile')
 
@@ -164,12 +164,11 @@ onMounted(() => {
   getCurrentUser().then(res => {
     console.log(res.data)
     userInfo.value = res.data
-    userStore.userInfo = userInfo
+    userStore.userInfo.value = userInfo
   })
 
   console.log(userInfo)
-  //userStore.state.addresses = getAddressList()
-  // 从订单store同步统计数据
+  userStore.addresses.value = getAddressList()
   // userStore.statistics.pendingPayment = orderStore.state.statistics.pending
   // userStore.statistics.pendingShipment = orderStore.state.statistics.paid
   // userStore.statistics.pendingReceipt = orderStore.state.statistics.shipped

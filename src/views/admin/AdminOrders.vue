@@ -2,7 +2,7 @@
   <div class="admin-orders">
     <!-- Tab切换 -->
     <el-card class="tabs-card" shadow="hover">
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="全部订单" name="all" />
         <el-tab-pane label="退款中" name="refund" />
         <el-tab-pane label="售后处理" name="afterSale" />
@@ -60,16 +60,17 @@
       </el-table>
 
       <div class="pagination-container">
-        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50]" :total="total" sizes, prev, pager, next, jumper />
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handleCurrentChange" />
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import { getOrderList as getAdminOrderList } from '../../api/modules/admin.js'
 
 const activeTab = ref('all')
 const searchQuery = ref('')
@@ -80,24 +81,94 @@ const pageSize = ref(10)
 const total = ref(0)
 const loading = ref(false)
 
-const orderList = ref([
-  { id: 1, orderNo: 'YS202401150001', merchantName: '云商城旗舰店', userName: '用户1234', productName: 'Apple AirPods Pro 2', quantity: 1, amount: 1899, status: 'completed', createTime: '2024-01-15 14:30:25' },
-  { id: 2, orderNo: 'YS202401150002', merchantName: '数码专营店', userName: '买家5678', productName: 'iPhone 15 Pro Max', quantity: 1, amount: 8999, status: 'shipped', createTime: '2024-01-15 10:15:30' },
-  { id: 3, orderNo: 'YS202401140003', merchantName: '潮流服饰店', userName: '顾客9012', productName: 'Nike Air Max 270', quantity: 1, amount: 799, status: 'refund', createTime: '2024-01-14 16:20:15' }
-])
+const orderList = ref([])
+
+// 加载订单列表
+const loadOrderList = async () => {
+  loading.value = true
+  try {
+    const params = {
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    }
+    
+    // 根据Tab和筛选条件设置参数
+    if (activeTab.value === 'refund') {
+      params.status = 5 // 退款中
+    } else if (statusFilter.value) {
+      const statusMap = {
+        'pending': 0,
+        'paid': 1,
+        'shipped': 2,
+        'completed': 3,
+        'cancelled': 4
+      }
+      params.status = statusMap[statusFilter.value]
+    }
+    
+    const res = await getAdminOrderList(params)
+    if (res.code === 1000 && res.data) {
+      orderList.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        orderNo: item.orderNo,
+        merchantName: item.merchantName || '未知商家',
+        userName: item.userName || '未知用户',
+        productName: item.productName || '商品',
+        quantity: item.quantity || 1,
+        amount: item.actualAmount || 0,
+        status: item.status,
+        createTime: item.createTime
+      }))
+      total.value = res.data.totalElements || 0
+    }
+  } catch (error) {
+    console.error('加载订单列表失败:', error)
+    ElMessage.error('加载订单列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const getStatusType = (status) => {
-  const map = { pending: 'info', paid: 'warning', shipped: 'primary', completed: 'success', cancelled: 'danger', refund: 'warning' }
+  const map = { 0: 'info', 1: 'warning', 2: 'primary', 3: 'success', 4: 'danger', 5: 'warning' }
   return map[status] || 'info'
 }
 
 const getStatusText = (status) => {
-  const map = { pending: '待付款', paid: '待发货', shipped: '已发货', completed: '已完成', cancelled: '已取消', refund: '退款中' }
+  const map = { 0: '待付款', 1: '待发货', 2: '已发货', 3: '已完成', 4: '已取消', 5: '退款中' }
   return map[status] || '未知'
 }
 
-const viewOrderDetail = (order) => ElMessage.info('查看订单详情')
-const handleRefund = (order) => ElMessage.info('处理退款')
+const viewOrderDetail = (order) => {
+  ElMessage.info(`查看订单 ${order.orderNo} 详情`)
+  // TODO: 跳转到订单详情页
+}
+
+const handleRefund = (order) => {
+  ElMessage.info(`处理订单 ${order.orderNo} 的退款申请`)
+  // TODO: 打开退款处理弹窗
+}
+
+// 监听Tab切换和分页变化
+const handleTabChange = () => {
+  currentPage.value = 1
+  loadOrderList()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  loadOrderList()
+}
+
+const handleCurrentChange = (page) => {
+  currentPage.value = page
+  loadOrderList()
+}
+
+// 初始加载
+onMounted(() => {
+  loadOrderList()
+})
 </script>
 
 <style scoped>

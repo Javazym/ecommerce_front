@@ -138,6 +138,18 @@ export function applyRefund(orderId, data) {
   });
 }
 
+/**
+ * 获取退款详情
+ * @param {number} refundId - 退款ID
+ * @returns {Promise}
+ */
+export function getRefundDetail(refundId) {
+  return request({
+    url: `/shopping-server/orders/refunds/${refundId}`,
+    method: 'get'
+  });
+}
+
 export default {
   getOrderList,
   getOrderDetail,

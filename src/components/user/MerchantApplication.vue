@@ -182,7 +182,7 @@ import { ElMessage } from 'element-plus'
 import { CircleCheck, Plus } from '@element-plus/icons-vue'
 import merchantStore, {getMerchantInfo, hasApplied, isPending, submitApplication} from '../../stores/merchantStore'
 import {uploadFile} from "../../api/modules/file.js";
-import userStore from "../../stores/userStore.js";
+import {useUserStore} from "../../stores/userStore.js";
 import {getApplyMerchant} from "../../api/modules/merchant.js";
 
 const router = useRouter()

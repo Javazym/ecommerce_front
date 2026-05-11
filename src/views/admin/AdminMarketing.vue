@@ -75,25 +75,104 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import {
+  getBannerList,
+  createBanner,
+  updateBanner,
+  deleteBanner as deleteBannerApi,
+  updateBannerStatus,
+  getAnnouncementList,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement as deleteAnnouncementApi,
+  updateAnnouncementStatus
+} from '../../api/modules/admin.js'
 
 const activeTab = ref('banners')
 const loading = ref(false)
 
-const bannerList = ref([
-  { id: 1, title: '新春大促', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400', link: '/promotion/spring', position: '首页', sort: 1, status: true },
-  { id: 2, title: '数码专场', image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400', link: '/category/electronics', position: '首页', sort: 2, status: true },
-  { id: 3, title: '服饰上新', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400', link: '/category/clothing', position: '首页', sort: 3, status: true }
-])
+// 轮播图列表
+const bannerList = ref([])
 
-const noticeList = ref([
-  { id: 1, title: '关于春节期间物流安排的通知', type: 'logistics', typeText: '物流', target: '全部用户', createTime: '2024-01-15 10:00:00', status: 'published' },
-  { id: 2, title: '商家中心升级维护公告', type: 'system', typeText: '系统', target: '商家', createTime: '2024-01-14 15:30:00', status: 'published' },
-  { id: 3, title: '新功能：店铺优惠券限时免费领', type: 'activity', typeText: '活动', target: '全部用户', createTime: '2024-01-13 09:00:00', status: 'draft' }
-])
+// 加载轮播图列表
+const loadBannerList = async () => {
+  loading.value = true
+  try {
+    const res = await getBannerList()
+    if (res.code === 1000 && res.data) {
+      bannerList.value = (res.data || []).map(item => ({
+        id: item.id,
+        title: item.title || '',
+        image: item.image || item.imageUrl || '',
+        link: item.link || item.linkUrl || '',
+        position: getPositionText(item.position),
+        sort: item.sort || 0,
+        status: item.status === 1
+      }))
+    }
+  } catch (error) {
+    console.error('加载轮播图失败:', error)
+    ElMessage.error('加载轮播图失败')
+  } finally {
+    loading.value = false
+  }
+}
 
+// 获取位置文本
+const getPositionText = (position) => {
+  const map = { 0: '首页', 1: '分类页', 2: '商品页' }
+  return map[position] || '首页'
+}
+
+// 公告列表
+const noticeList = ref([])
+
+// 加载公告列表
+const loadNoticeList = async () => {
+  loading.value = true
+  try {
+    const res = await getAnnouncementList()
+    if (res.code === 1000 && res.data) {
+      noticeList.value = (res.data || []).map(item => ({
+        id: item.id,
+        title: item.title || '',
+        type: getTypeKey(item.type),
+        typeText: getTypeText(item.type),
+        target: getTargetText(item.targetAudience),
+        createTime: item.createdAt,
+        status: item.status === 1 ? 'published' : 'draft'
+      }))
+    }
+  } catch (error) {
+    console.error('加载公告失败:', error)
+    ElMessage.error('加载公告失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取类型键值
+const getTypeKey = (type) => {
+  const map = { 0: 'system', 1: 'activity', 2: 'logistics' }
+  return map[type] || 'system'
+}
+
+// 获取类型文本
+const getTypeText = (type) => {
+  const map = { 0: '系统', 1: '活动', 2: '物流' }
+  return map[type] || '系统'
+}
+
+// 获取目标受众文本
+const getTargetText = (target) => {
+  const map = { 0: '全部用户', 1: '商家', 2: '管理员' }
+  return map[target] || '全部用户'
+}
+
+// 活动列表(暂保留模拟数据)
 const activityList = ref([
   { id: 1, name: '新春大促', type: 'discount', typeText: '折扣活动', startTime: '2024-02-01 00:00:00', endTime: '2024-02-15 23:59:59', status: 'pending', statusText: '即将开始' },
   { id: 2, name: '年货节', type: 'coupon', typeText: '优惠券', startTime: '2024-01-20 00:00:00', endTime: '2024-02-05 23:59:59', status: 'active', statusText: '进行中' }
@@ -109,9 +188,19 @@ const getActivityStatus = (status) => {
   return map[status] || 'info'
 }
 
-const addBanner = () => ElMessage.info('添加轮播图')
-const addNotice = () => ElMessage.info('发布公告')
-const addActivity = () => ElMessage.info('创建活动')
+// 添加轮播图
+const addBanner = () => ElMessage.info('添加轮播图功能开发中')
+
+// 发布公告
+const addNotice = () => ElMessage.info('发布公告功能开发中')
+
+// 创建活动
+const addActivity = () => ElMessage.info('创建活动功能开发中')
+
+// 初始加载
+onMounted(() => {
+  loadBannerList()
+})
 </script>
 
 <style scoped lang="scss">

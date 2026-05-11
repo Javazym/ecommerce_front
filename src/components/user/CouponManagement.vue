@@ -181,10 +181,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Clock, CircleCheck } from '@element-plus/icons-vue'
 import { state, fetchUserCoupons, receiveCoupon, useCoupon, availableCoupons, usedCoupons, expiredCoupons } from '../../stores/couponStore'
 import { getCouponList } from '../../api/modules/coupon.js'
-import { useUserStore } from '../../stores/userStore'
+import {useUserStore} from "../../stores/userStore.js";
+
 
 const router = useRouter()
-const userStore = useUserStore()
+const userStoreInfo = useUserStore()
 
 // 当前标签
 const activeTab = ref('available')
@@ -208,15 +209,15 @@ onMounted(() => {
 })
 
 const loadUserCoupons = async () => {
-  if (!userStore.userInfo?.id) {
+  if (!userStoreInfo.userInfo.value?.id) {
     ElMessage.warning('请先登录')
     return
   }
-  
+
   loading.value = true
   try {
     await fetchUserCoupons({
-      userId: userStore.userInfo.id,
+      userId: userStoreInfo.userInfo.value.id,
       pageNum: pageNum.value,
       pageSize: pageSize.value
     })
@@ -234,7 +235,7 @@ const loadAvailableCoupons = async () => {
       pageNum: 1,
       pageSize: 20
     })
-    
+
     if (res.code === 1000 && res.data) {
       availableToClaim.value = (res.data.content || []).map(item => ({
         id: item.id,
@@ -271,23 +272,23 @@ const formatDate = (dateStr) => {
 
 // 使用优惠券
 const handleUseCoupon = async (coupon) => {
-  if (!userStore.userInfo?.id) {
+  if (!userStoreInfo.userInfo.value?.id) {
     ElMessage.warning('请先登录')
     return
   }
-  
+
   ElMessage.success('优惠券已锁定，跳转至商品页面')
   router.push('/')
 }
 
 // 领取优惠券
 const handleClaimCoupon = async (couponId) => {
-  if (!userStore.userInfo?.id) {
+  if (!userStoreInfo.userInfo.value?.id) {
     ElMessage.warning('请先登录')
     return
   }
-  
-  const success = await receiveCoupon(couponId, userStore.userInfo.id)
+
+  const success = await receiveCoupon(couponId, userStoreInfo.userInfo.value.id)
   if (success) {
     // 更新列表中的领取状态
     const coupon = availableToClaim.value.find(c => c.id === couponId)

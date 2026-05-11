@@ -8,11 +8,10 @@ import request from '../request';
  * @param {number} userId - 用户ID
  * @returns {Promise}
  */
-export function getCartList(userId) {
+export function getCartList() {
   return request({
     url: '/shopping-server/cart',
     method: 'get',
-    params: { userId }
   });
 }
 
@@ -40,7 +39,7 @@ export function addToCart(data) {
  */
 export function getSelectedCartItems(userId) {
   return request({
-    url: '/shopping-server/cart/selected',
+    url: '/shopping-server/cart/checked',
     method: 'get',
     params: { userId }
   });
@@ -74,14 +73,15 @@ export function getCartStatistics(userId) {
 
 /**
  * 更新购物车商品数量
+ * @param {number} cartItemId - 购物车ID
  * @param {Object} data - 更新数据
- * @param {number} data.id - 购物车ID
+ * @param {string} data.userId - 用户ID
  * @param {number} data.quantity - 数量
  * @returns {Promise}
  */
-export function updateCartQuantity(data) {
+export function updateCartQuantity(cartItemId, data) {
   return request({
-    url: '/shopping-server/cart/quantity',
+    url: `/shopping-server/cart/${cartItemId}/quantity`,
     method: 'put',
     data
   });
@@ -89,14 +89,15 @@ export function updateCartQuantity(data) {
 
 /**
  * 选中/取消选中购物车商品
+ * @param {number} cartItemId - 购物车ID
  * @param {Object} data - 操作数据
- * @param {number} data.id - 购物车ID
+ * @param {string} data.userId - 用户ID
  * @param {number} data.checked - 是否选中(0/1)
  * @returns {Promise}
  */
-export function toggleCartItemChecked(data) {
+export function toggleCartItemChecked(cartItemId, data) {
   return request({
-    url: '/shopping-server/cart/check',
+    url: `/shopping-server/cart/${cartItemId}/check`,
     method: 'put',
     data
   });
@@ -105,13 +106,13 @@ export function toggleCartItemChecked(data) {
 /**
  * 全选/取消全选
  * @param {Object} data - 操作数据
- * @param {number} data.userId - 用户ID
+ * @param {string} data.userId - 用户ID
  * @param {number} data.checked - 是否全选(0/1)
  * @returns {Promise}
  */
 export function toggleSelectAll(data) {
   return request({
-    url: '/shopping-server/cart/checkAll',
+    url: '/shopping-server/cart/check-all',
     method: 'put',
     data
   });
@@ -119,13 +120,15 @@ export function toggleSelectAll(data) {
 
 /**
  * 删除购物车商品
- * @param {number} id - 购物车ID
+ * @param {number} cartItemId - 购物车ID
+ * @param {string} userId - 用户ID
  * @returns {Promise}
  */
-export function deleteCartItem(id) {
+export function deleteCartItem(cartItemId, userId) {
   return request({
-    url: `/cart/${id}`,
-    method: 'delete'
+    url: `/shopping-server/cart/${cartItemId}`,
+    method: 'delete',
+    params: { userId }
   });
 }
 

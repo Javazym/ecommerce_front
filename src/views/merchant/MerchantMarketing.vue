@@ -142,6 +142,17 @@
             </template>
           </el-table-column>
         </el-table>
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="pagination.pageNum"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
 
       <!-- 秒杀活动 -->
@@ -183,6 +194,17 @@
             </template>
           </el-table-column>
         </el-table>
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="pagination.pageNum"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
 
       <!-- 满减活动 -->
@@ -224,6 +246,17 @@
             </template>
           </el-table-column>
         </el-table>
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="pagination.pageNum"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
     </el-card>
 
@@ -289,121 +322,47 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import {ref, reactive, onMounted, onBeforeMount} from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Ticket, Coin, User, Clock, Lightning, Discount, Plus
 } from '@element-plus/icons-vue'
+import { getMerchantCouponList, createCoupon, updateCoupon, deleteCoupon as apiDeleteCoupon } from "../../api/modules/coupon.js"
+import { getCouponStatistics } from "../../api/modules/coupon.js"
+import { getSeckillList, createSeckill, updateSeckill, deleteSeckill } from "../../api/modules/coupon.js"
+import { getDiscountList, createDiscount, updateDiscount, deleteDiscount } from "../../api/modules/coupon.js"
+import {getMerchantInfo, state as merchantState} from "../../stores/merchantStore.js"
+
 
 // Tab
 const activeTab = ref('coupons')
 const loading = ref(false)
+// 商家信息
+const merchantInfo = merchantState.merchantInfo
+
+// 分页参数
+const pagination = reactive({
+  pageNum: 1,
+  pageSize: 10,
+  total: 0
+})
 
 // 营销统计
 const marketingStats = ref({
-  totalCoupons: 8,
-  totalDiscount: 15680,
-  usedCoupons: 456,
-  expiredCoupons: 12
+  totalCoupons: 0,
+  totalDiscount: 0,
+  usedCoupons: 0,
+  expiredCoupons: 0
 })
 
 // 优惠券列表
-const couponList = ref([
-  {
-    id: 1,
-    name: '新人专享券',
-    description: '仅限新人首单使用',
-    type: 'cash',
-    value: 50,
-    minAmount: 299,
-    total: 1000,
-    used: 456,
-    status: 'active',
-    startTime: '2024-01-01',
-    expireTime: '2024-12-31'
-  },
-  {
-    id: 2,
-    name: '数码满减券',
-    description: '数码电子产品专用',
-    type: 'cash',
-    value: 100,
-    minAmount: 999,
-    total: 500,
-    used: 234,
-    status: 'active',
-    startTime: '2024-01-01',
-    expireTime: '2024-06-30'
-  },
-  {
-    id: 3,
-    name: '新春8折券',
-    description: '春节期间全店通用',
-    type: 'discount',
-    value: 8,
-    minAmount: 199,
-    total: 200,
-    used: 89,
-    status: 'expired',
-    startTime: '2024-01-01',
-    expireTime: '2024-02-15'
-  }
-])
+const couponList = ref([])
 
 // 秒杀列表
-const seckillList = ref([
-  {
-    id: 1,
-    name: '春节特惠秒杀',
-    productName: 'Apple AirPods Pro 2',
-    seckillPrice: 1499,
-    originalPrice: 1899,
-    stock: 100,
-    sold: 78,
-    startTime: '2024-02-10 10:00:00',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: '元宵节秒杀',
-    productName: 'Dyson V15吸尘器',
-    seckillPrice: 3999,
-    originalPrice: 4990,
-    stock: 20,
-    sold: 15,
-    startTime: '2024-02-24 14:00:00',
-    status: 'pending'
-  }
-])
+const seckillList = ref([])
 
 // 满减活动列表
-const promotionList = ref([
-  {
-    id: 1,
-    name: '春季大促',
-    rules: [
-      { amount: 199, discount: 20 },
-      { amount: 399, discount: 50 },
-      { amount: 699, discount: 100 }
-    ],
-    scope: 'all',
-    startTime: '2024-03-01 00:00:00',
-    expireTime: '2024-03-31 23:59:59',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: '数码专场',
-    rules: [
-      { amount: 999, discount: 100 },
-      { amount: 1999, discount: 250 }
-    ],
-    scope: 'category',
-    startTime: '2024-01-15 00:00:00',
-    expireTime: '2024-02-15 23:59:59',
-    status: 'expired'
-  }
-])
+const promotionList = ref([])
 
 // 优惠券弹窗
 const couponDialogVisible = ref(false)
@@ -439,6 +398,61 @@ const getCouponStatusText = (status) => {
   return textMap[status] || '未知'
 }
 
+// 获取优惠券列表
+const fetchCouponList = async () => {
+  loading.value = true
+  try {
+    // 获取当前商家ID，如果没有则默认为0（平台券）
+    console.log('获取优惠券列表', merchantInfo)
+    const merchantId = merchantInfo.id || 0
+
+    const res = await getMerchantCouponList({
+      merchantId,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    })
+
+    if (res.code === 1000 && res.data) {
+      // 适配后端返回的数据结构
+      couponList.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        description: '', // 后端没有description字段，留空
+        type: item.type === 0 ? 'cash' : 'discount', // 0-满减，1-折扣
+        value: item.value,
+        minAmount: item.minAmount,
+        maxDiscount: item.maxDiscount,
+        total: item.totalCount,
+        used: item.usedCount,
+        received: item.receiveCount,
+        limitPerUser: item.limitPerUser,
+        status: item.status === 1 ? 'active' : 'inactive', // 1-启用，0-禁用
+        startTime: item.startTime,
+        expireTime: item.endTime,
+        validDays: item.validDays
+      }))
+
+      // 更新分页信息
+      pagination.total = res.data.totalElements || 0
+
+      // 更新统计数据
+      updateMarketingStats()
+    }
+  } catch (error) {
+    console.error('获取优惠券列表失败:', error)
+    ElMessage.error('获取优惠券列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新营销统计数据
+const updateMarketingStats = () => {
+  marketingStats.value.totalCoupons = pagination.total
+  marketingStats.value.usedCoupons = couponList.value.reduce((sum, item) => sum + (item.used || 0), 0)
+  // 其他统计数据可以根据实际需求计算
+}
+
 // 获取秒杀状态类型
 const getSeckillStatusType = (status) => {
   const typeMap = {
@@ -465,7 +479,7 @@ const openCouponDialog = (coupon = null) => {
   if (coupon) {
     Object.assign(couponForm, {
       name: coupon.name,
-      description: coupon.description,
+      description: coupon.description || '',
       type: coupon.type,
       value: coupon.value,
       minAmount: coupon.minAmount,
@@ -489,7 +503,7 @@ const openCouponDialog = (coupon = null) => {
 }
 
 // 保存优惠券
-const saveCoupon = () => {
+const saveCoupon = async () => {
   if (!couponForm.name) {
     ElMessage.warning('请输入优惠券名称')
     return
@@ -499,42 +513,286 @@ const saveCoupon = () => {
     return
   }
 
-  ElMessage.success(editingCoupon.value ? '优惠券更新成功' : '优惠券创建成功')
-  couponDialogVisible.value = false
+  try {
+    const merchantId = merchantInfo.id || 0
+
+    // 构建请求数据
+    const couponData = {
+      name: couponForm.name,
+      type: couponForm.type === 'cash' ? 0 : 1, // 0-满减，1-折扣
+      value: couponForm.value,
+      minAmount: couponForm.minAmount,
+      maxDiscount: 1000,
+      totalStock: couponForm.total,
+      limitPerUser: couponForm.limitPerUser,
+      startTime: couponForm.dateRange[0],
+      endTime: couponForm.dateRange[1]
+    }
+
+    if (editingCoupon.value) {
+      // 更新优惠券
+      await updateCoupon(editingCoupon.value.id, {
+        ...couponData,
+        merchantId: merchantInfo.id,
+        status: editingCoupon.value.status === 'active' ? 1 : 0
+      })
+      ElMessage.success('优惠券更新成功')
+    } else {
+      // 创建优惠券
+      await createCoupon({
+        ...couponData,
+        merchantId: merchantInfo.id
+      })
+      ElMessage.success('优惠券创建成功')
+    }
+
+    couponDialogVisible.value = false
+    // 重新加载列表
+    await fetchCouponList()
+  } catch (error) {
+    console.error('保存优惠券失败:', error)
+    ElMessage.error('保存优惠券失败')
+  }
 }
 
 // 切换优惠券状态
-const toggleCouponStatus = (coupon) => {
-  coupon.status = coupon.status === 'active' ? 'inactive' : 'active'
-  ElMessage.success(coupon.status === 'active' ? '优惠券已启用' : '优惠券已禁用')
+const toggleCouponStatus = async (coupon) => {
+  try {
+    const newStatus = coupon.status === 'active' ? 0 : 1  // active→0禁用, inactive→1启用
+    
+    await updateCoupon(coupon.id, {
+      merchantId: merchantInfo.id,
+      status: newStatus
+    })
+    
+    ElMessage.success(newStatus === 1 ? '优惠券已启用' : '优惠券已禁用')
+    // 重新加载列表
+    await fetchCouponList()
+  } catch (error) {
+    console.error('切换优惠券状态失败:', error)
+    ElMessage.error('操作失败')
+  }
 }
 
 // 删除优惠券
 const deleteCoupon = async (coupon) => {
   try {
-    await ElMessageBox.confirm('确定要删除该优惠券吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除该优惠券吗?', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const index = couponList.value.findIndex(c => c.id === coupon.id)
-    if (index > -1) {
-      couponList.value.splice(index, 1)
-      ElMessage.success('删除成功')
+
+    const merchantId = merchantInfo.id || 0
+    // 调用删除优惠券的 API
+    await apiDeleteCoupon(coupon.id, merchantId)
+    ElMessage.success('删除成功')
+    // 重新加载列表以更新统计
+    await fetchCouponList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除优惠券失败:', error)
+      ElMessage.error('删除失败')
     }
-  } catch {
-    // 取消
+    // 取消操作
   }
 }
 
+// 获取秒杀活动列表
+const fetchSeckillList = async () => {
+  loading.value = true
+  try {
+    const merchantId = merchantInfo.id || 0
+
+    const res = await getSeckillList({
+      merchantId,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    })
+
+    if (res.code === 1000 && res.data) {
+      // 适配后端返回的数据结构
+      seckillList.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        productName: item.product?.name || '未知商品',
+        seckillPrice: item.seckillPrice,
+        originalPrice: item.originalPrice,
+        stock: item.stock,
+        sold: item.soldCount || 0,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        status: item.status === 0 ? 'pending' : item.status === 1 ? 'active' : item.status === 2 ? 'ended' : 'cancelled',
+        limitPerUser: item.limitPerUser
+      }))
+
+      // 更新分页信息
+      pagination.total = res.data.totalElements || 0
+    }
+  } catch (error) {
+    console.error('获取秒杀活动列表失败:', error)
+    ElMessage.error('获取秒杀活动列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取满减活动列表
+const fetchDiscountList = async () => {
+  loading.value = true
+  try {
+    const merchantId = merchantInfo.id || 0
+
+    const res = await getDiscountList({
+      merchantId,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
+    })
+
+    if (res.code === 1000 && res.data) {
+      // 适配后端返回的数据结构
+      promotionList.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        rules: [
+          { amount: item.conditionValue, discount: item.discountAmount }
+        ],
+        scope: item.scopeType === 'all' ? 'all' : 'category',
+        startTime: item.startTime,
+        expireTime: item.endTime,
+        status: item.status === 0 ? 'pending' : item.status === 1 ? 'active' : item.status === 2 ? 'expired' : 'cancelled',
+        maxDiscount: item.maxDiscount,
+        limitPerUser: item.limitPerUser
+      }))
+
+      // 更新分页信息
+      pagination.total = res.data.totalElements || 0
+    }
+  } catch (error) {
+    console.error('获取满减活动列表失败:', error)
+    ElMessage.error('获取满减活动列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 获取优惠券统计信息
+const fetchCouponStatistics = async () => {
+  try {
+    const res = await getCouponStatistics({
+      merchantId: merchantInfo.id
+    })
+    
+    if (res.code === 1000 && res.data) {
+      marketingStats.value = {
+        totalCoupons: res.data.totalCoupons || 0,
+        totalDiscount: 0,  // 需要后端提供或前端计算
+        usedCoupons: res.data.totalUsed || 0,
+        expiredCoupons: 0  // 需要后端提供或前端计算
+      }
+    }
+  } catch (error) {
+    console.error('获取优惠券统计失败:', error)
+  }
+}
+
+// 页面加载时获取数据
+onMounted(async () => {
+  await getMerchantInfo()
+  await Promise.all([
+    fetchCouponList(),
+    fetchSeckillList(),
+    fetchDiscountList(),
+    fetchCouponStatistics()
+  ])
+})
+
 // 打开秒杀弹窗
-const openSeckillDialog = () => {
-  ElMessage.info('秒杀活动创建功能开发中')
+const openSeckillDialog = (seckill = null) => {
+  if (seckill) {
+    ElMessage.info('编辑秒杀活动功能开发中')
+  } else {
+    ElMessage.info('创建秒杀活动功能开发中')
+  }
+}
+
+// 删除秒杀活动
+const deleteSeckillActivity = async (seckill) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该秒杀活动吗?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const merchantId = merchantInfo.id || 0
+    await deleteSeckill(seckill.id, merchantId)
+    ElMessage.success('删除成功')
+    await fetchSeckillList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除秒杀活动失败:', error)
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
 // 打开满减弹窗
-const openPromotionDialog = () => {
-  ElMessage.info('满减活动创建功能开发中')
+const openPromotionDialog = (promotion = null) => {
+  if (promotion) {
+    ElMessage.info('编辑满减活动功能开发中')
+  } else {
+    ElMessage.info('创建满减活动功能开发中')
+  }
+}
+
+// 删除满减活动
+const deletePromotionActivity = async (promotion) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该满减活动吗?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const merchantId = merchantInfo.id || 0
+    await deleteDiscount(promotion.id, merchantId)
+    ElMessage.success('删除成功')
+    await fetchDiscountList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除满减活动失败:', error)
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
+// 分页大小变化处理
+const handleSizeChange = (val) => {
+  pagination.pageSize = val
+  pagination.pageNum = 1
+  // 根据当前tab重新加载对应的数据
+  if (activeTab.value === 'coupons') {
+    fetchCouponList()
+  } else if (activeTab.value === 'seckill') {
+    fetchSeckillList()
+  } else if (activeTab.value === 'promotion') {
+    fetchDiscountList()
+  }
+}
+
+// 当前页变化处理
+const handleCurrentChange = (val) => {
+  pagination.pageNum = val
+  // 根据当前tab重新加载对应的数据
+  if (activeTab.value === 'coupons') {
+    fetchCouponList()
+  } else if (activeTab.value === 'seckill') {
+    fetchSeckillList()
+  } else if (activeTab.value === 'promotion') {
+    fetchDiscountList()
+  }
 }
 </script>
 
@@ -637,5 +895,11 @@ const openPromotionDialog = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

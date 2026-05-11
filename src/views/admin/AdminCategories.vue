@@ -219,7 +219,7 @@ const convertToCascaderOptions = (categories) => {
   }))
 }
 
-// 品牌列表
+// 品牌列表（暂保留模拟数据，待后端API补充）
 const brandList = ref([
   { id: 1, name: 'Apple', logo: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=100', category: '数码电子', productCount: 156, status: true },
   { id: 2, name: 'Nike', logo: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100', category: '服饰服装', productCount: 89, status: true },
@@ -432,12 +432,14 @@ const saveBrand = () => {
     ElMessage.warning('请选择所属类目')
     return
   }
+  // TODO: 调用后端API保存品牌
   ElMessage.success(editingBrand.value ? '品牌更新成功' : '品牌添加成功')
   brandDialogVisible.value = false
 }
 
 // 切换品牌状态
 const toggleBrandStatus = (brand) => {
+  // TODO: 调用后端API更新品牌状态
   ElMessage.success(brand.status ? '品牌已启用' : '品牌已禁用')
 }
 
@@ -449,6 +451,7 @@ const deleteBrand = async (brand) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+    // TODO: 调用后端API删除品牌
     const index = brandList.value.findIndex(b => b.id === brand.id)
     if (index > -1) {
       brandList.value.splice(index, 1)

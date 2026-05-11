@@ -75,16 +75,14 @@
           <el-badge :value="pendingTasks" :max="99" class="message-badge">
             <el-button :icon="Bell" circle />
           </el-badge>
-          <!-- 用户下拉 -->
+          <!-- 用户下拉菜单 -->
           <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-info">
-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80" alt="管理员头像" class="user-avatar" />
-              <span class="user-name">超级管理员</span>
+              <span class="user-name">{{ currentAdmin.username }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人信息</el-dropdown-item>
                 <el-dropdown-item command="password">修改密码</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
@@ -106,13 +104,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Monitor, DataAnalysis, OfficeBuilding, User, Grid, Goods,
   List, Wallet, Promotion, Setting, Fold, Expand, Bell, ArrowDown
 } from '@element-plus/icons-vue'
+import { getCurrentAdmin, getPlatformStatistics } from '../../api/modules/admin.js'
+import { clearAllUserData } from '../../stores/clearData.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -121,7 +121,41 @@ const route = useRoute()
 const isCollapse = ref(false)
 
 // 待办任务数
-const pendingTasks = ref(5)
+const pendingTasks = ref(0)
+
+// 当前管理员信息
+const currentAdmin = ref({
+  id: null,
+  username: ''
+})
+
+// 加载管理员信息
+const loadAdminInfo = async () => {
+  try {
+    const res = await getCurrentAdmin()
+    if (res.code === 1000 && res.data) {
+      currentAdmin.value = {
+        id: res.data.id || null,
+        username: res.data.username || ''
+      }
+    }
+  } catch (error) {
+    console.error('加载管理员信息失败:', error)
+  }
+}
+
+// 加载待办任务数
+const loadPendingTasks = async () => {
+  try {
+    const res = await getPlatformStatistics()
+    if (res.code === 1000 && res.data) {
+      // 待办任务 = 待审核商家 + 待处理退款
+      pendingTasks.value = (res.data.pendingAudits || 0) + (res.data.pendingRefunds || 0)
+    }
+  } catch (error) {
+    console.error('加载待办任务失败:', error)
+  }
+}
 
 // 当前激活菜单
 const activeMenu = computed(() => {
@@ -175,26 +209,43 @@ const handleMenuSelect = (index) => {
   router.push(routeMap[index])
 }
 
-// 用户菜单命令
-const handleCommand = async (command) => {
-  if (command === 'logout') {
-    try {
-      await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      })
-      ElMessage.success('已退出登录')
-      router.push('/')
-    } catch {
-      // 用户取消
-    }
-  } else if (command === 'profile') {
-    router.push('/admin/settings')
-  } else if (command === 'password') {
-    ElMessage.info('修改密码功能开发中')
+// 退出登录
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    // 清除所有用户数据
+    clearAllUserData()
+    ElMessage.success('已退出登录')
+    router.push('/')
+  } catch {
+    // 用户取消
   }
 }
+
+// 修改密码
+const handleChangePassword = () => {
+  // TODO: 打开修改密码弹窗或跳转到修改密码页面
+  ElMessage.info('修改密码功能开发中')
+}
+
+// 用户菜单命令
+const handleCommand = (command) => {
+  if (command === 'logout') {
+    handleLogout()
+  } else if (command === 'password') {
+    handleChangePassword()
+  }
+}
+
+// 初始加载
+onMounted(() => {
+  loadAdminInfo()
+  loadPendingTasks()
+})
 </script>
 
 <style scoped lang="scss">
@@ -339,25 +390,25 @@ const handleCommand = async (command) => {
     .user-info {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
+      transition: background-color 0.2s;
 
       &:hover {
         background: #f5f7fa;
       }
 
-      .user-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-      }
-
       .user-name {
         font-size: 14px;
         color: #606266;
+        font-weight: 500;
+      }
+
+      .el-icon {
+        font-size: 12px;
+        color: #909399;
       }
     }
   }

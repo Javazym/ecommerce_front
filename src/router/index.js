@@ -5,6 +5,7 @@ import ShoppingCart from '../views/ShoppingCart.vue'
 import UserCenter from '../views/UserCenter.vue'
 import Checkout from '../views/Checkout.vue'
 import OrderDetail from '../views/OrderDetail.vue'
+import RefundDetail from '../views/RefundDetail.vue'
 import MerchantLayout from '../views/merchant/MerchantLayout.vue'
 import MerchantDashboard from '../views/merchant/MerchantDashboard.vue'
 import MerchantProducts from '../views/merchant/MerchantProducts.vue'
@@ -21,6 +22,7 @@ import AdminOrders from '../views/admin/AdminOrders.vue'
 import AdminFinance from '../views/admin/AdminFinance.vue'
 import AdminMarketing from '../views/admin/AdminMarketing.vue'
 import AdminSettings from '../views/admin/AdminSettings.vue'
+import AdminProducts from "../views/admin/AdminProducts.vue";
 
 const routes = [
   {
@@ -57,6 +59,11 @@ const routes = [
     path: '/order/:id',
     name: 'OrderDetail',
     component: OrderDetail
+  },
+  {
+    path: '/refund/:id',
+    name: 'RefundDetail',
+    component: RefundDetail
   },
   // 商家端路由
   {
@@ -123,7 +130,7 @@ const routes = [
       {
         path: 'products',
         name: 'AdminProducts',
-        component: AdminCategories
+        component: AdminProducts
       },
       {
         path: 'orders',

@@ -6,6 +6,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import admin from './modules/admin';
 import user from './modules/user';
+import { clearAllUserData } from '../stores/clearData.js';
 
 const token = ref(localStorage.getItem('token') || '');
 const userInfo = ref(null);
@@ -45,6 +46,9 @@ export function useAuth() {
   }
 
   function logout() {
+    // 清除所有用户数据
+    clearAllUserData()
+    
     token.value = '';
     userInfo.value = null;
     localStorage.removeItem('token');

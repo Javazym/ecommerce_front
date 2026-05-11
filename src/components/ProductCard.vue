@@ -47,9 +47,14 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { ShoppingCart, Star, StarFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { isFavorite, toggleFavorite } from '../data/store.js'
+import { addToCart } from '../api/modules/cart.js'
+import { useUserStore } from '../stores/userStore.js'
+
+const router = useRouter()
+const userStore = useUserStore()
 
 const props = defineProps({
   product: {
@@ -68,30 +73,51 @@ const discount = computed(() => {
   return 0
 })
 
-// 检查是否已收藏
-const isFavorited = computed(() => isFavorite(props.product.id))
+// 检查是否已收藏（暂时保留本地逻辑）
+const isFavorited = computed(() => false) // TODO: 集成收藏 API
 
 const handleClick = () => {
   emit('click', props.product)
 }
 
-const handleAddToCart = () => {
-  ElMessage.success('已添加到购物车')
-  emit('add-to-cart', props.product)
+const handleAddToCart = async () => {
+  // 检查用户是否登录
+  if (!userStore.isLoggedIn || !userStore.userId) {
+    ElMessage.warning('请先登录后再添加购物车')
+    router.push('/auth')
+    return
+  }
+
+  try {
+    // 调用 API 添加到购物车
+    const res = await addToCart({
+      userId: String(userStore.userId),
+      productId: props.product.id,
+      skuId: props.product.skus?.[0]?.id || null, // 使用第一个 SKU ID
+      quantity: 1
+    })
+
+    if (res.code === 1000) {
+      ElMessage.success('已添加到购物车')
+      emit('add-to-cart', props.product)
+    } else {
+      ElMessage.error(res.message || '添加失败')
+    }
+  } catch (error) {
+    console.error('添加到购物车失败:', error)
+    ElMessage.error('添加到购物车失败')
+  }
 }
 
 const handleAddToFavorite = () => {
-  const added = toggleFavorite(props.product)
-  if (added) {
-    ElMessage.success('已添加到收藏')
-  } else {
-    ElMessage.success('已取消收藏')
-  }
+  // TODO: 集成收藏 API
+  ElMessage.info('收藏功能开发中')
   emit('add-to-favorite', props.product)
 }
 
 const handleBuy = () => {
-  ElMessage.success('正在跳转到购买页面')
+  // 跳转到商品详情页
+  router.push(`/product/${props.product.id}`)
   emit('buy', props.product)
 }
 </script>

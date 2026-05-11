@@ -11,7 +11,9 @@ import {
     cancelOrder as apiCancelOrder,
     payOrder as apiPayOrder,
     confirmReceipt as apiConfirmReceipt,
-    deleteOrder as apiDeleteOrder
+    deleteOrder as apiDeleteOrder,
+    getOrderLogistics,
+    applyRefund as apiApplyRefund
 } from '../api/modules/order.js'
 
 // 创建订单状态
@@ -158,13 +160,33 @@ async function deleteOrder(orderId) {
 }
 
 // 方法：申请退款
-function applyRefund(orderId, reason) {
-    const order = state.orders.find(o => o.id === orderId)
-    if (order) {
-        order.status = 'refunding'
-        order.statusText = '退款中'
+async function applyRefund(orderId, refundData) {
+    try {
+        // refundData 应该包含: type, amount, reason, description
+        const res = await apiApplyRefund(orderId, refundData)
         ElMessage.success('退款申请已提交')
-        updateStatistics()
+        // 重新加载订单列表
+        await fetchOrders()
+        // 返回响应数据，可能包含 refundId
+        return res.data
+    } catch (error) {
+        console.error('申请退款失败:', error)
+        ElMessage.error('申请退款失败')
+        throw error
+    }
+}
+
+// 方法：获取物流信息
+async function getLogistics(orderId) {
+    try {
+        const res = await getOrderLogistics(orderId)
+        if (res.code === 1000 && res.data) {
+            return res.data
+        }
+        return null
+    } catch (error) {
+        console.error('获取物流信息失败:', error)
+        return null
     }
 }
 
@@ -194,10 +216,20 @@ function extendReceipt(orderId) {
     ElMessage.success('已延长收货时间')
 }
 
-// 方法：查看物流
-function getLogistics(orderId) {
-    const order = state.orders.find(o => o.id === orderId)
-    return order?.logistics || null
+
+
+// 方法：清除订单数据
+function clearOrders() {
+    state.orders = []
+    state.currentOrder = null
+    state.statistics = {
+        all: 0,
+        pending: 0,
+        paid: 0,
+        shipped: 0,
+        completed: 0,
+        cancelled: 0
+    }
 }
 
 export {
@@ -216,7 +248,8 @@ export {
     reviewOrder,
     updateStatistics,
     extendReceipt,
-    getLogistics
+    getLogistics,
+    clearOrders
 }
 
 export default state

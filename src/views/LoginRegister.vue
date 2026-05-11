@@ -224,8 +224,11 @@ import { ElMessage } from 'element-plus'
 import { Message, Lock, User, Key, CircleCheckFilled } from '@element-plus/icons-vue'
 import user from "../api/user.js";
 import {useRouter} from "vue-router";
+import {getCurrentUser} from "../api/modules/user.js";
+import {useUserStore} from "../stores/userStore.js";
+import {clearAllUserData} from "../stores/clearData.js";
 
-
+const userStore = useUserStore()
 // Login Tab State
 const activeLoginTab = ref('password')
 const isRegisterView = ref(false)
@@ -388,55 +391,51 @@ const sendRegisterCode = async () => {
 }
 
 const handlePasswordLogin = async () => {
-  console.log("经过这里了？")
   try {
     await passwordLoginFormRef.value?.validate()
     passwordLoginLoading.value = true
+
+    // 登录前先清除旧数据
+    clearAllUserData()
+
+    let loginParams = {}
     if (isValidEmailStrict(passwordLoginForm.email)) {
-      console.log("经过这里了？")
-      user.login({
+      loginParams = {
         email: passwordLoginForm.email,
         username: "",
         password: passwordLoginForm.password
-      })
-          .then((res) => {
-            if (res.code === 1000) {
-              passwordLoginLoading.value = false
-              ElMessage.success('登录成功！')
-              localStorage.setItem('token', res.data.data)
-              router.push({
-                path: '/'
-              })
-            }
-          })
+      }
     } else {
-      console.log("经过这里了？")
-      user.login({
+      loginParams = {
         email: "",
         username: passwordLoginForm.email,
         password: passwordLoginForm.password
-      })
-          .then((res) => {
-            console.log("经过这里了？")
-            console.log(res)
-            if (res.code === 1000) {
-              ElMessage.success('登录成功！')
-              localStorage.setItem('token', res.data)
-              console.log("经过这里了？")
-              router.push({
-                path: '/'
-              })
-            }
-            passwordLoginLoading.value = false
-
-          }).catch((error) => {
-            passwordLoginLoading.value = false
-      })
+      }
     }
 
-    // Simulate login
+    const res = await user.login(loginParams)
+
+    if (res.code === 1000) {
+      ElMessage.success('登录成功！')
+      localStorage.setItem('token', res.data.data || res.data)
+
+      // 获取用户信息并更新store
+      const userRes = await getCurrentUser()
+      if (userRes.code === 1000 && userRes.data) {
+        // 使用store的方法更新用户信息
+        userStore.updateUserInfo(userRes.data)
+        userStore.setLoginStatus(true, userRes.data.id)
+      }
+
+      router.push({ path: '/' })
+    } else {
+      ElMessage.error(res.message || '登录失败')
+    }
+
+    passwordLoginLoading.value = false
   } catch (error) {
-    // Validation failed
+    passwordLoginLoading.value = false
+    console.error('登录失败:', error)
   }
 }
 
@@ -444,22 +443,33 @@ const handleCodeLogin = async () => {
   try {
     await codeLoginFormRef.value?.validate()
     codeLoginLoading.value = true
-    user.verifyCodeLogin(codeLoginForm)
-        .then((res) => {
-          if (res.data.code === 200) {
-            ElMessage.success('登录成功！')
-            localStorage.setItem('token', res.data.data)
-            router.push({
-              path: '/'
-            })
-          }
-          codeLoginLoading.value = false
-        }).catch((error) => {
-      codeLoginLoading.value = false
-    })
-    // Simulate login
+
+    // 登录前先清除旧数据
+    clearAllUserData()
+
+    const res = await user.verifyCodeLogin(codeLoginForm)
+
+    if (res.code === 1000 || res.data?.code === 200) {
+      ElMessage.success('登录成功！')
+      const token = res.data?.data || res.data
+      localStorage.setItem('token', token)
+
+      // 获取用户信息并更新store
+      const userRes = await getCurrentUser()
+      if (userRes.code === 1000 && userRes.data) {
+        userStore.updateUserInfo(userRes.data)
+        userStore.setLoginStatus(true, userRes.data.id)
+      }
+
+      router.push({ path: '/' })
+    } else {
+      ElMessage.error(res.message || '登录失败')
+    }
+
+    codeLoginLoading.value = false
   } catch (error) {
-    // Validation failed
+    codeLoginLoading.value = false
+    console.error('验证码登录失败:', error)
   }
 }
 
@@ -495,18 +505,18 @@ const handleRegister = async () => {
     registerLoading.value = true
     user.register(registerForm)
     .then((res) => {
-      if (res.data.stuus === 200) {
+      if (res.code === 1000) {
         ElMessage.success('注册成功！正在跳转...')
         registerFormRef.value?.resetFields()
         passwordStrengthClass.value = ''
         passwordStrengthText.value = ''
         switchToLogin()
       }
-      registerLoading.value = false
     })
   } catch (error) {
-    // Validation failed
+    registerLoading.value = false
   }
+  registerLoading.value = false
 }
 </script>
 

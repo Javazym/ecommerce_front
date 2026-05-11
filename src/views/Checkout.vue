@@ -215,9 +215,12 @@ import { getProductDetail } from '../api/modules/product.js'
 import { createOrder } from '../api/modules/order.js'
 import { fetchAddresses } from '../stores/addressStore.js'
 import { state as addressState } from '../stores/addressStore.js'
+import { getUserCoupons, validateCoupon } from '../api/modules/coupon.js'
+import { useUserStore } from '../stores/userStore.js'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 // 加载状态
 const loading = ref(true)
@@ -226,7 +229,7 @@ const loading = ref(true)
 const buyNowProduct = ref(null)
 const buyNowSkuId = ref(null)
 const buyNowQuantity = ref(1)
-
+const buyNowMerchantId = ref(1)
 // 收货地址（从 store 获取）
 const addresses = computed(() => {
   const addrs = addressState.addresses || []
@@ -251,11 +254,7 @@ const invoiceTitle = ref('')
 
 // 优惠券
 const selectedCoupon = ref(0)
-const availableCoupons = ref([
-  { id: 1, name: '满500减30', value: 30, minAmount: 500 },
-  { id: 2, name: '满1000减80', value: 80, minAmount: 1000 },
-  { id: 3, name: '满2000减150', value: 150, minAmount: 2000 }
-])
+const availableCoupons = ref([])
 
 // 订单备注
 const orderRemark = ref('')
@@ -272,8 +271,33 @@ const deliveryFee = computed(() => {
 
 const couponDiscount = computed(() => {
   if (selectedCoupon.value === 0) return 0
+  
   const coupon = availableCoupons.value.find(c => c.id === selectedCoupon.value)
-  return coupon ? coupon.value : 0
+  if (!coupon) return 0
+  
+  // 检查是否满足使用门槛
+  if (totalAmount.value < coupon.minAmount) {
+    return 0
+  }
+  
+  let discount = 0
+  
+  if (coupon.type === 'discount') {
+    // 折扣券: value为折扣比例，如8.5表示85折
+    const discountRate = coupon.value / 10
+    discount = totalAmount.value * (1 - discountRate)
+    
+    // 如果有最高优惠限制
+    if (coupon.maxDiscount && discount > coupon.maxDiscount) {
+      discount = coupon.maxDiscount
+    }
+  } else {
+    // 满减券: value为固定金额
+    discount = coupon.value
+  }
+  
+  // 优惠金额不能超过订单总额
+  return Math.min(discount, totalAmount.value)
 })
 
 const finalAmount = computed(() => {
@@ -286,7 +310,7 @@ onMounted(async () => {
   try {
     // 加载地址列表
     await fetchAddresses()
-    
+
     // 设置默认选中的地址
     if (addresses.value.length > 0) {
       const defaultAddr = addresses.value.find(addr => addr.isDefault === 1)
@@ -294,18 +318,20 @@ onMounted(async () => {
     } else {
       ElMessage.warning('您还没有收货地址，请先添加')
     }
-    
+
     // 检查是否是立即购买（从 URL 参数获取）
     const productId = route.query.productId
     const skuId = route.query.skuId
     const quantity = route.query.quantity
-    
+    const merchantId = route.query.merchantId
+
     if (productId && skuId) {
       // 立即购买模式：获取商品详情
       buyNowProduct.value = parseInt(productId)
       buyNowSkuId.value = parseInt(skuId)
       buyNowQuantity.value = parseInt(quantity) || 1
-      
+      buyNowMerchantId.value = parseInt(merchantId) || 1
+
       await loadBuyNowProduct(parseInt(productId), parseInt(skuId), buyNowQuantity.value)
     } else {
       // TODO: 购物车结算模式
@@ -313,6 +339,9 @@ onMounted(async () => {
       router.push('/cart')
       return
     }
+    
+    // 加载可用优惠券
+    await fetchAvailableCoupons()
   } catch (error) {
     console.error('加载数据失败:', error)
     ElMessage.error('加载数据失败')
@@ -327,7 +356,7 @@ const loadBuyNowProduct = async (productId, skuId, quantity) => {
     const res = await getProductDetail(productId)
     if (res.code === 1000 && res.data) {
       const product = res.data
-      
+
       // 查找对应的 SKU
       const sku = product.skus?.find(s => s.id === skuId)
       if (!sku) {
@@ -335,7 +364,7 @@ const loadBuyNowProduct = async (productId, skuId, quantity) => {
         router.push('/product/' + productId)
         return
       }
-      
+
       // 设置订单商品
       orderItems.value = [{
         id: product.id,
@@ -374,7 +403,7 @@ const handleSubmitOrder = async () => {
     ElMessage.warning('请选择收货地址')
     return
   }
-  
+
   if (orderItems.value.length === 0) {
     ElMessage.warning('没有可结算的商品')
     return
@@ -398,20 +427,46 @@ const handleSubmitOrder = async () => {
         dangerouslyUseHTMLString: false
       }
     )
-    
+
+    // 如果选择了优惠券，先验证
+    if (selectedCoupon.value > 0) {
+      try {
+        const validateRes = await validateCoupon({
+          userId: String(userStore.userId),
+          couponId: selectedCoupon.value,
+          orderAmount: totalAmount.value
+        })
+        
+        if (validateRes.code !== 1000 || !validateRes.data.valid) {
+          ElMessage.warning(validateRes.data.errorMessage || '优惠券不可用')
+          return
+        }
+      } catch (error) {
+        console.error('验证优惠券失败:', error)
+        ElMessage.error('优惠券验证失败')
+        return
+      }
+    }
+
     // 构建订单数据
     const orderData = {
-      productId: buyNowProduct.value,
-      skuId: buyNowSkuId.value,
-      quantity: buyNowQuantity.value,
+      merchantId: buyNowMerchantId.value,
       addressId: selectedAddress.value,
       couponId: selectedCoupon.value > 0 ? selectedCoupon.value : undefined,
-      remark: orderRemark.value || undefined
+      remark: orderRemark.value || undefined,
+      items: [
+        {
+          productId: buyNowProduct.value,
+          skuId: buyNowSkuId.value,
+          quantity: buyNowQuantity.value,
+
+        }
+      ]
     }
-    
+
     // 调用创建订单 API
     const res = await createOrder(orderData)
-    
+
     if (res.code === 1000 && res.data) {
       ElMessage.success('订单提交成功！')
       // 跳转到订单详情页
@@ -437,6 +492,64 @@ const goToCart = () => {
 // 搜索
 const handleSearch = (query) => {
   router.push({ path: '/', query: { search: query } })
+}
+
+// 获取可用优惠券
+const fetchAvailableCoupons = async () => {
+  if (!userStore.userId) {
+    availableCoupons.value = []
+    return
+  }
+  
+  try {
+    const res = await getUserCoupons({
+      userId: String(userStore.userId),
+      status: 0,  // 0-未使用
+      pageNum: 1,
+      pageSize: 50
+    })
+    
+    if (res.code === 1000 && res.data) {
+      availableCoupons.value = (res.data.content || []).map(item => ({
+        id: item.couponId,
+        userCouponId: item.id,  // 用户优惠券记录ID
+        name: item.couponName,
+        type: item.couponType === 0 ? 'cash' : 'discount',
+        value: item.value,
+        minAmount: item.minAmount,
+        maxDiscount: item.maxDiscount,
+        expireTime: item.expireTime
+      }))
+    } else {
+      availableCoupons.value = []
+    }
+  } catch (error) {
+    console.error('获取可用优惠券失败:', error)
+    availableCoupons.value = []
+  }
+}
+
+// 格式化优惠券标签
+const formatCouponLabel = (coupon) => {
+  const discountText = coupon.type === 'discount' 
+    ? `${coupon.value}折` 
+    : `减¥${coupon.value}`
+  const conditionText = coupon.minAmount > 0 
+    ? `(满${coupon.minAmount}可用)` 
+    : '(无门槛)'
+  return `${coupon.name} - ${discountText} ${conditionText}`
+}
+
+// 优惠券变化时的处理
+const handleCouponChange = (couponId) => {
+  if (couponId > 0) {
+    const coupon = availableCoupons.value.find(c => c.id === couponId)
+    if (coupon && totalAmount.value < coupon.minAmount) {
+      ElMessage.warning(`订单金额未达到优惠券使用门槛(满${coupon.minAmount}元)`)
+      selectedCoupon.value = 0
+      return
+    }
+  }
 }
 </script>
 

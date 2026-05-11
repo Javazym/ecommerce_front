@@ -21,6 +21,12 @@
       <el-tab-pane label="已取消" name="cancelled">
         <order-list :orders="filteredOrders" @action="handleOrderAction" />
       </el-tab-pane>
+      <el-tab-pane label="退款中" name="refunding">
+        <order-list :orders="filteredOrders" @action="handleOrderAction" />
+      </el-tab-pane>
+      <el-tab-pane label="已退款" name="refunded">
+        <order-list :orders="filteredOrders" @action="handleOrderAction" />
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 分页 -->
@@ -61,18 +67,75 @@
       </template>
     </el-dialog>
 
+    <!-- 申请退款对话框 -->
+    <el-dialog v-model="refundDialogVisible" title="申请退款/退货" width="600px">
+      <el-form :model="refundForm" label-width="100px">
+        <el-form-item label="退款类型" required>
+          <el-radio-group v-model="refundForm.type">
+            <el-radio :label="1">仅退款</el-radio>
+            <el-radio :label="2">退货退款</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="退款金额" required>
+          <el-input-number 
+            v-model="refundForm.amount" 
+            :min="0.01" 
+            :max="currentRefundOrder?.payAmount || 0"
+            :precision="2"
+            :step="0.01"
+            style="width: 100%"
+          />
+          <div class="form-tip">最多可退 ¥{{ currentRefundOrder?.payAmount || 0 }}</div>
+        </el-form-item>
+        <el-form-item label="退款原因" required>
+          <el-select v-model="refundForm.reason" placeholder="请选择退款原因" style="width: 100%">
+            <el-option label="商品质量问题" value="商品质量问题" />
+            <el-option label="商品与描述不符" value="商品与描述不符" />
+            <el-option label="发错货/漏发" value="发错货/漏发" />
+            <el-option label="七天无理由退换" value="七天无理由退换" />
+            <el-option label="其他原因" value="其他原因" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="详细说明">
+          <el-input
+            v-model="refundForm.description"
+            type="textarea"
+            :rows="4"
+            placeholder="请详细描述退款原因，有助于商家快速处理"
+          />
+        </el-form-item>
+        <el-form-item label="上传凭证">
+          <el-upload
+            action="#"
+            list-type="picture-card"
+            :auto-upload="false"
+            :limit="3"
+          >
+            <el-icon><Plus /></el-icon>
+            <template #tip>
+              <div class="el-upload__tip">最多上传3张图片</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="refundDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmApplyRefund" :loading="refundLoading">提交申请</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 物流信息对话框 -->
     <el-dialog v-model="logisticsDialogVisible" title="物流信息" width="600px">
       <div class="logistics-info" v-if="currentLogistics">
         <div class="logistics-header">
-          <p><strong>物流公司：</strong>{{ currentLogistics.company }}</p>
-          <p><strong>运单号：</strong>{{ currentLogistics.trackingNo }}</p>
-          <p><strong>物流状态：</strong><el-tag type="success">{{ currentLogistics.status }}</el-tag></p>
+          <p><strong>物流公司：</strong>{{ currentLogistics.logisticsCompany || '未知' }}</p>
+          <p><strong>运单号：</strong>{{ currentLogistics.trackingNumber || '暂无' }}</p>
+          <p><strong>物流状态：</strong><el-tag type="success">{{ currentLogistics.currentStatus || '运输中' }}</el-tag></p>
         </div>
         <el-divider />
         <el-timeline>
           <el-timeline-item
-            v-for="(item, index) in currentLogistics.details"
+            v-for="(item, index) in parseTraces(currentLogistics.traces)"
             :key="index"
             :timestamp="item.time"
             placement="top"
@@ -81,15 +144,22 @@
           </el-timeline-item>
         </el-timeline>
       </div>
+      <div v-else class="empty-logistics">
+        <el-empty description="暂无物流信息" />
+      </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import OrderList from './OrderList.vue'
 import { fetchOrders, cancelOrder, payOrder, confirmReceipt, deleteOrder, applyRefund, getLogistics, state } from '../../stores/orderStore'
+
+const router = useRouter()
 
 // 当前标签
 const activeTab = ref('all')
@@ -108,6 +178,18 @@ const cancelForm = reactive({
 const logisticsDialogVisible = ref(false)
 const currentLogistics = ref(null)
 
+// 退款相关
+const refundDialogVisible = ref(false)
+const refundLoading = ref(false)
+const currentRefundOrder = ref(null)
+const refundForm = reactive({
+  orderId: null,
+  type: 1, // 1-仅退款, 2-退货退款
+  amount: 0,
+  reason: '',
+  description: ''
+})
+
 // 加载订单列表
 onMounted(() => {
   loadOrders()
@@ -124,11 +206,13 @@ const loadOrders = () => {
   if (activeTab.value !== 'all') {
     // 映射前端状态到后端状态码
     const statusMap = {
-      pending: 0,  // 待付款
-      paid: 1,     // 待发货
-      shipped: 2,  // 待收货
-      completed: 3,// 已完成
-      cancelled: 4 // 已取消
+      pending: 0,     // 待付款
+      paid: 1,        // 待发货
+      shipped: 2,     // 待收货
+      completed: 3,   // 已完成
+      cancelled: 4,   // 已取消
+      refunding: 5,   // 退款中
+      refunded: 6     // 已退款
     }
     params.status = statusMap[activeTab.value]
   }
@@ -235,12 +319,13 @@ const handleConfirmReceipt = (order) => {
 }
 
 // 查看物流
-const handleViewLogistics = (order) => {
-  currentLogistics.value = getLogistics(order.id)
-  if (!currentLogistics.value) {
+const handleViewLogistics = async (order) => {
+  const logistics = await getLogistics(order.id)
+  if (!logistics) {
     ElMessage.info('暂无物流信息')
     return
   }
+  currentLogistics.value = logistics
   logisticsDialogVisible.value = true
 }
 
@@ -251,12 +336,75 @@ const handleDeleteOrder = (order) => {
 
 // 评价订单
 const handleReviewOrder = (order) => {
-  ElMessage.info('评价功能开发中')
+  // 跳转到订单详情页进行评价
+  router.push(`/order/${order.id}`)
 }
 
 // 申请退款
 const handleApplyRefund = (order) => {
-  applyRefund(order.id, '用户申请退款')
+  currentRefundOrder.value = order
+  refundForm.orderId = order.id
+  refundForm.type = 1
+  refundForm.amount = order.payAmount || 0
+  refundForm.reason = ''
+  refundForm.description = ''
+  refundDialogVisible.value = true
+}
+
+// 确认申请退款
+const confirmApplyRefund = async () => {
+  if (!refundForm.reason) {
+    ElMessage.warning('请选择退款原因')
+    return
+  }
+  
+  if (!refundForm.amount || refundForm.amount <= 0) {
+    ElMessage.warning('请输入正确的退款金额')
+    return
+  }
+
+  refundLoading.value = true
+  
+  try {
+    const result = await applyRefund(refundForm.orderId, {
+      type: refundForm.type,
+      amount: refundForm.amount,
+      reason: refundForm.reason,
+      description: refundForm.description || refundForm.reason
+    })
+    refundDialogVisible.value = false
+    
+    // 如果返回了退款ID，跳转到退款详情页
+    if (result && result.refundId) {
+      router.push(`/refund/${result.refundId}`)
+    } else {
+      // 否则重新加载订单列表
+      loadOrders()
+    }
+  } catch (error) {
+    console.error('申请退款失败:', error)
+  } finally {
+    refundLoading.value = false
+  }
+}
+
+// 解析物流轨迹
+const parseTraces = (traces) => {
+  if (!traces) return []
+  
+  // 如果 traces 是字符串，尝试解析为 JSON
+  if (typeof traces === 'string') {
+    try {
+      const parsed = JSON.parse(traces)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (e) {
+      // 如果不是 JSON 格式，返回空数组
+      return []
+    }
+  }
+  
+  // 如果已经是数组，直接返回
+  return Array.isArray(traces) ? traces : []
 }
 </script>
 
@@ -291,6 +439,16 @@ const handleApplyRefund = (order) => {
         color: #606266;
       }
     }
+  }
+
+  .empty-logistics {
+    padding: 40px 0;
+  }
+
+  .form-tip {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
   }
 }
 </style>

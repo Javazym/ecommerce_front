@@ -203,6 +203,16 @@ function getItemQuantity(productId) {
   return item ? item.quantity : 0
 }
 
+// 方法：清除购物车数据
+function clearCartData() {
+  state.items = []
+  state.statistics = {
+    totalItems: 0,
+    totalAmount: 0,
+    selectedAmount: 0
+  }
+}
+
 export {
   state,
   selectedItems,
@@ -220,7 +230,8 @@ export {
   clearSelected,
   updateStatistics,
   isInCart,
-  getItemQuantity
+  getItemQuantity,
+  clearCartData
 }
 
 export default {

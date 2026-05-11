@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ChatDotRound, Picture, VideoCamera } from '@element-plus/icons-vue'
@@ -91,6 +91,7 @@ const router = useRouter()
 
 // 加载状态
 const loading = ref(true)
+const loadingMore = ref(false) // 加载更多状态
 
 // 商品列表
 const products = ref([])
@@ -106,16 +107,53 @@ const filters = reactive({
 // 分页参数
 const pageNum = ref(1)
 const pageSize = ref(20)
+const hasMore = ref(true) // 是否还有更多数据
+const totalElements = ref(0) // 总元素数
 
 // 加载首页商品数据
-const loadHomeProducts = async () => {
-  loading.value = true
+const loadHomeProducts = async (isLoadMore = false) => {
+  if (!isLoadMore) {
+    loading.value = true
+    pageNum.value = 1
+    hasMore.value = true
+  } else {
+    loadingMore.value = true
+  }
+  
   try {
-    // 获取热卖商品用于轮播图
-    const hotRes = await getHotProducts({ limit: 6 })
-    if (hotRes.code === 1000 && hotRes.data) {
-      // 适配数据结构
-      products.value = hotRes.data.map(item => ({
+    // 获取热卖商品用于轮播图（只在首次加载时）
+    if (!isLoadMore) {
+      const hotRes = await getHotProducts({ limit: 6 })
+      if (hotRes.code === 1000 && hotRes.data) {
+        // 适配数据结构
+        products.value = hotRes.data.map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.subName || '',
+          price: item.price,
+          originalPrice: item.originalPrice,
+          image: item.image,
+          images: item.images || {},
+          sales: item.soldCount || 0,
+          rating: item.rating || 5,
+          isHot: item.isHot === 1,
+          category: item.categoryName || '',
+          categoryId: item.categoryId
+        }))
+      }
+    }
+    
+    // 获取普通商品列表
+    const params = {
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+      sortField: 'createdAt',
+      sortOrder: 'desc'
+    }
+    
+    const res = await getProductList(params)
+    if (res.code === 1000 && res.data) {
+      const newProducts = (res.data.content || []).map(item => ({
         id: item.id,
         name: item.name,
         description: item.subName || '',
@@ -129,21 +167,36 @@ const loadHomeProducts = async () => {
         category: item.categoryName || '',
         categoryId: item.categoryId
       }))
+      
+      if (isLoadMore) {
+        // 加载更多时追加数据
+        products.value = [...products.value, ...newProducts]
+      } else {
+        // 首次加载时替换数据
+        products.value = newProducts
+      }
+      
+      totalElements.value = res.data.totalElements || 0
+      hasMore.value = products.value.length < totalElements.value
     }
   } catch (error) {
     console.error('加载商品失败:', error)
     ElMessage.error('加载商品失败')
   } finally {
     loading.value = false
+    loadingMore.value = false
   }
 }
 
 // 处理搜索
 const handleSearch = async (query) => {
   filters.searchQuery = query
+  pageNum.value = 1
+  hasMore.value = true
+  
   if (!query) {
     // 搜索为空时重新加载默认商品
-    await loadHomeProducts()
+    await loadHomeProducts(false)
     return
   }
   
@@ -170,7 +223,9 @@ const handleSearch = async (query) => {
         category: item.categoryName || '',
         categoryId: item.categoryId
       }))
-      ElMessage.success(`找到 ${res.data.totalElements || 0} 个相关商品`)
+      totalElements.value = res.data.totalElements || 0
+      hasMore.value = products.value.length < totalElements.value
+      ElMessage.success(`找到 ${totalElements.value} 个相关商品`)
     }
   } catch (error) {
     console.error('搜索失败:', error)
@@ -185,14 +240,23 @@ const handleFilterChange = async (filterData) => {
   filters.categories = filterData.categories
   filters.priceRange = filterData.priceRange
   filters.sortBy = filterData.sortBy
+  pageNum.value = 1
+  hasMore.value = true
   
   // 根据筛选条件重新加载商品
-  await loadFilteredProducts()
+  await loadFilteredProducts(false)
 }
 
 // 加载筛选后的商品
-const loadFilteredProducts = async () => {
-  loading.value = true
+const loadFilteredProducts = async (isLoadMore = false) => {
+  if (!isLoadMore) {
+    loading.value = true
+    pageNum.value = 1
+    hasMore.value = true
+  } else {
+    loadingMore.value = true
+  }
+  
   try {
     const params = {
       pageNum: pageNum.value,
@@ -211,7 +275,7 @@ const loadFilteredProducts = async () => {
     
     const res = await getProductList(params)
     if (res.code === 1000 && res.data) {
-      products.value = (res.data.content || []).map(item => ({
+      const newProducts = (res.data.content || []).map(item => ({
         id: item.id,
         name: item.name,
         description: item.subName || '',
@@ -225,12 +289,24 @@ const loadFilteredProducts = async () => {
         category: item.categoryName || '',
         categoryId: item.categoryId
       }))
+      
+      if (isLoadMore) {
+        // 加载更多时追加数据
+        products.value = [...products.value, ...newProducts]
+      } else {
+        // 首次加载时替换数据
+        products.value = newProducts
+      }
+      
+      totalElements.value = res.data.totalElements || 0
+      hasMore.value = products.value.length < totalElements.value
     }
   } catch (error) {
     console.error('加载筛选商品失败:', error)
     ElMessage.error('加载商品失败')
   } finally {
     loading.value = false
+    loadingMore.value = false
   }
 }
 
@@ -266,13 +342,47 @@ const handleReset = async () => {
   filters.priceRange = ''
   filters.sortBy = 'default'
   filters.searchQuery = ''
-  await loadHomeProducts()
+  pageNum.value = 1
+  hasMore.value = true
+  await loadHomeProducts(false)
   ElMessage.success('已重置筛选条件')
+}
+
+// 滚动事件处理函数
+const handleScroll = async () => {
+  // 如果正在加载或没有更多数据，则不执行
+  if (loadingMore.value || !hasMore.value) return
+  
+  // 计算滚动位置
+  const scrollTop = window.scrollY || document.documentElement.scrollTop
+  const windowHeight = window.innerHeight
+  const documentHeight = document.documentElement.scrollHeight
+  
+  // 当滚动到距离底部100px时触发加载
+  if (scrollTop + windowHeight >= documentHeight - 100) {
+    pageNum.value++
+    
+    // 根据当前状态决定调用哪个加载函数
+    if (filters.searchQuery) {
+      await handleSearch(filters.searchQuery)
+    } else if (filters.categories.length > 0 || filters.priceRange || filters.sortBy !== 'default') {
+      await loadFilteredProducts(true)
+    } else {
+      await loadHomeProducts(true)
+    }
+  }
 }
 
 // 初始加载
 onMounted(() => {
-  loadHomeProducts()
+  loadHomeProducts(false)
+  // 添加滚动事件监听
+  window.addEventListener('scroll', handleScroll)
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 </script>
 
@@ -383,5 +493,17 @@ onMounted(() => {
     font-size: 12px;
     color: #78909c;
   }
+}
+
+.loading-more {
+  padding: 20px 0;
+  text-align: center;
+}
+
+.no-more {
+  padding: 20px 0;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
 }
 </style>

@@ -13,10 +13,8 @@ import request from "../request.js";
  * @returns {Promise}
  */
 export function adminLogin(data) {
-  return request({
-    url: '/shopping-server/admin/login',
-    method: 'post',
-    params: data,
+  return request.post('/auth/login', data, {
+    ignoreAuth: true
   });
 }
 
@@ -44,6 +42,21 @@ export function changePassword(data) {
     url: '/shopping-server/admin/password',
     method: 'put',
     params: data,
+  });
+}
+
+/**
+ * 创建管理员
+ * @param {Object} data - 管理员信息
+ * @param {string} data.username - 用户名
+ * @param {string} data.password - 密码
+ * @returns {Promise}
+ */
+export function createAdmin(data) {
+  return request({
+    url: '/auth/admin/create',
+    method: 'post',
+    data,
   });
 }
 
@@ -246,5 +259,263 @@ export function getMerchantsByCategory(category, params = {}) {
       pageSize: 10,
       ...params,
     },
+  });
+}
+
+/**
+ * 获取用户列表
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码，默认1
+ * @param {number} params.pageSize - 每页大小，默认10
+ * @returns {Promise}
+ */
+export function getUserList(params = {}) {
+  return request({
+    url: '/shopping-server/admin/users',
+    method: 'get',
+    params: {
+      pageNum: 1,
+      pageSize: 10,
+      ...params,
+    },
+  });
+}
+
+/**
+ * 更新用户状态
+ * @param {string} userId - 用户ID
+ * @param {number} status - 状态：0-禁用，1-正常
+ * @returns {Promise}
+ */
+export function updateUserStatus(userId, status) {
+  return request({
+    url: `/auth/users/${userId}/status`,
+    method: 'put',
+    params: { status },
+  });
+}
+
+/**
+ * 获取订单列表
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码，默认1
+ * @param {number} params.pageSize - 每页大小，默认10
+ * @param {number} [params.status] - 订单状态(可选)
+ * @returns {Promise}
+ */
+export function getOrderList(params = {}) {
+  return request({
+    url: '/shopping-server/admin/orders',
+    method: 'get',
+    params: {
+      pageNum: 1,
+      pageSize: 10,
+      ...params,
+    },
+  });
+}
+
+/**
+ * 营销管理API
+ */
+
+/**
+ * 获取轮播图列表
+ * @returns {Promise}
+ */
+export function getBannerList() {
+  return request({
+    url: '/shopping-server/admin/marketing/banners',
+    method: 'get',
+  });
+}
+
+/**
+ * 创建轮播图
+ * @param {Object} data - 轮播图数据
+ * @returns {Promise}
+ */
+export function createBanner(data) {
+  return request({
+    url: '/shopping-server/admin/marketing/banners',
+    method: 'post',
+    data,
+  });
+}
+
+/**
+ * 更新轮播图
+ * @param {number} bannerId - 轮播图ID
+ * @param {Object} data - 轮播图数据
+ * @returns {Promise}
+ */
+export function updateBanner(bannerId, data) {
+  return request({
+    url: `/shopping-server/admin/marketing/banners/${bannerId}`,
+    method: 'put',
+    data,
+  });
+}
+
+/**
+ * 删除轮播图
+ * @param {number} bannerId - 轮播图ID
+ * @returns {Promise}
+ */
+export function deleteBanner(bannerId) {
+  return request({
+    url: `/shopping-server/admin/marketing/banners/${bannerId}`,
+    method: 'delete',
+  });
+}
+
+/**
+ * 更新轮播图状态
+ * @param {number} bannerId - 轮播图ID
+ * @param {number} status - 状态：0-禁用，1-启用
+ * @returns {Promise}
+ */
+export function updateBannerStatus(bannerId, status) {
+  return request({
+    url: `/shopping-server/admin/marketing/banners/${bannerId}/status`,
+    method: 'put',
+    params: { status },
+  });
+}
+
+/**
+ * 获取公告列表
+ * @param {Object} params - 查询参数
+ * @param {number} [params.type] - 公告类型(可选)
+ * @returns {Promise}
+ */
+export function getAnnouncementList(params = {}) {
+  return request({
+    url: '/shopping-server/admin/announcements',
+    method: 'get',
+    params,
+  });
+}
+
+/**
+ * 创建公告
+ * @param {Object} data - 公告数据
+ * @returns {Promise}
+ */
+export function createAnnouncement(data) {
+  return request({
+    url: '/shopping-server/admin/announcements',
+    method: 'post',
+    data,
+  });
+}
+
+/**
+ * 更新公告
+ * @param {number} announcementId - 公告ID
+ * @param {Object} data - 公告数据
+ * @returns {Promise}
+ */
+export function updateAnnouncement(announcementId, data) {
+  return request({
+    url: `/shopping-server/admin/announcements/${announcementId}`,
+    method: 'put',
+    data,
+  });
+}
+
+/**
+ * 删除公告
+ * @param {number} announcementId - 公告ID
+ * @returns {Promise}
+ */
+export function deleteAnnouncement(announcementId) {
+  return request({
+    url: `/shopping-server/admin/announcements/${announcementId}`,
+    method: 'delete',
+  });
+}
+
+/**
+ * 更新公告状态
+ * @param {number} announcementId - 公告ID
+ * @param {number} status - 状态：0-草稿，1-已发布
+ * @returns {Promise}
+ */
+export function updateAnnouncementStatus(announcementId, status) {
+  return request({
+    url: `/shopping-server/admin/announcements/${announcementId}/status`,
+    method: 'put',
+    params: { status },
+  });
+}
+
+/**
+ * 商品审核管理API
+ */
+
+/**
+ * 获取待审核商品列表
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码，默认1
+ * @param {number} params.pageSize - 每页大小，默认10
+ * @returns {Promise}
+ */
+export function getPendingProducts(params = {}) {
+  return request({
+    url: '/shopping-server/admin/products/pending',
+    method: 'get',
+    params: {
+      pageNum: 1,
+      pageSize: 10,
+      ...params,
+    },
+  });
+}
+
+/**
+ * 获取所有商品列表
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码，默认1
+ * @param {number} params.pageSize - 每页大小，默认10
+ * @returns {Promise}
+ */
+export function getAllProducts(params = {}) {
+  return request({
+    url: '/shopping-server/admin/products',
+    method: 'get',
+    params: {
+      pageNum: 1,
+      pageSize: 10,
+      ...params,
+    },
+  });
+}
+
+/**
+ * 审核商品
+ * @param {number} productId - 商品ID
+ * @param {Object} data - 审核数据
+ * @param {boolean} data.approved - 是否通过
+ * @param {string} [data.reason] - 审核原因
+ * @returns {Promise}
+ */
+export function auditProduct(productId, data) {
+  return request({
+    url: `/shopping-server/admin/products/${productId}/audit`,
+    method: 'post',
+    params: data,
+  });
+}
+
+/**
+ * 下架商品
+ * @param {number} productId - 商品ID
+ * @returns {Promise}
+ */
+export function offlineProduct(productId) {
+  return request({
+    url: `/shopping-server/admin/products/${productId}/offline`,
+    method: 'put',
   });
 }

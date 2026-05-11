@@ -174,6 +174,15 @@ async function batchRemoveProductFavorites(productIds) {
   }
 }
 
+// 方法：清除收藏数据
+function clearFavorites() {
+  state.productFavorites = []
+  state.statistics = {
+    productCount: 0,
+    storeCount: 0
+  }
+}
+
 export {
   state,
   totalFavorites,
@@ -184,7 +193,8 @@ export {
   getFavoriteCount,
   updateStatistics,
   clearProductFavorites,
-  batchRemoveProductFavorites
+  batchRemoveProductFavorites,
+  clearFavorites
 }
 
 export default state

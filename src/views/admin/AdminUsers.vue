@@ -65,7 +65,6 @@
             >
               {{ row.status === 'normal' ? '冻结' : '解冻' }}
             </el-button>
-            <el-button type="danger" link @click="deleteUser(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -130,9 +129,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import { getUserList, updateUserStatus } from '../../api/modules/admin.js'
 
 // 搜索
 const searchQuery = ref('')
@@ -144,53 +144,40 @@ const total = ref(0)
 const loading = ref(false)
 
 // 用户列表
-const userList = ref([
-  {
-    id: 1,
-    username: 'user1234',
-    nickname: '云端漫步',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-    phone: '138****8888',
-    email: 'user1234@example.com',
-    balance: 1280,
-    orders: 25,
-    status: 'normal',
-    registerTime: '2023-06-15 10:30:25',
-    lastLoginTime: '2024-01-15 14:20:30',
-    recentOrders: [
-      { orderNo: 'YS202401150001', amount: 2698, status: '已完成', createTime: '2024-01-15 14:30' },
-      { orderNo: 'YS202401100002', amount: 599, status: '已完成', createTime: '2024-01-10 10:15' }
-    ]
-  },
-  {
-    id: 2,
-    username: 'buyer5678',
-    nickname: '购物达人',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
-    phone: '139****9999',
-    email: 'buyer5678@example.com',
-    balance: 560,
-    orders: 18,
-    status: 'normal',
-    registerTime: '2023-08-20 15:20:10',
-    lastLoginTime: '2024-01-15 11:30:00',
-    recentOrders: []
-  },
-  {
-    id: 3,
-    username: 'shopper9012',
-    nickname: '精打细算',
-    avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100',
-    phone: '137****7777',
-    email: 'shopper9012@example.com',
-    balance: 0,
-    orders: 8,
-    status: 'frozen',
-    registerTime: '2023-11-05 09:15:40',
-    lastLoginTime: '2024-01-10 16:45:20',
-    recentOrders: []
+const userList = ref([])
+
+// 加载用户列表
+const loadUserList = async () => {
+  loading.value = true
+  try {
+    const res = await getUserList({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    })
+    if (res.code === 1000 && res.data) {
+      userList.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        username: item.username,
+        nickname: item.nickname,
+        avatar: item.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        phone: item.phone || '',
+        email: item.email || '',
+        balance: item.balance || 0,
+        orders: item.orderCount || 0,
+        status: item.status === 1 ? 'normal' : 'frozen',
+        registerTime: item.createdAt,
+        lastLoginTime: item.lastLoginTime,
+        recentOrders: []
+      }))
+      total.value = res.data.totalElements || 0
+    }
+  } catch (error) {
+    console.error('加载用户列表失败:', error)
+    ElMessage.error('加载用户列表失败')
+  } finally {
+    loading.value = false
   }
-])
+}
 
 // 详情弹窗
 const detailDialogVisible = ref(false)
@@ -211,34 +198,39 @@ const toggleUserStatus = async (user) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    user.status = user.status === 'normal' ? 'frozen' : 'normal'
-    ElMessage.success(`用户已${action}`)
-  } catch {}
-}
-
-// 删除用户
-const deleteUser = async (user) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除用户 "${user.username}" 吗？此操作不可恢复！`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    const index = userList.value.findIndex(u => u.id === user.id)
-    if (index > -1) {
-      userList.value.splice(index, 1)
+    
+    const newStatus = user.status === 'normal' ? 0 : 1
+    const res = await updateUserStatus(user.id, newStatus)
+    
+    if (res.code === 1000) {
+      user.status = user.status === 'normal' ? 'frozen' : 'normal'
+      ElMessage.success(`用户已${action}`)
+      loadUserList()
+    } else {
+      throw new Error(res.message || '操作失败')
     }
-    ElMessage.success('删除成功')
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
 }
 
 const handleSizeChange = (size) => {
   pageSize.value = size
+  loadUserList()
 }
 
 const handleCurrentChange = (page) => {
   currentPage.value = page
+  loadUserList()
 }
+
+// 初始加载
+onMounted(() => {
+  loadUserList()
+})
 </script>
 
 <style scoped lang="scss">

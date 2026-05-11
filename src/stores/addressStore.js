@@ -77,6 +77,11 @@ async function setDefaultAddressData(id) {
     }
 }
 
+// 清除地址数据
+function clearAddresses() {
+    state.addresses = []
+}
+
 export {
     state,
     defaultAddress,
@@ -84,7 +89,8 @@ export {
     addAddressData,
     updateAddressData,
     deleteAddressData,
-    setDefaultAddressData
+    setDefaultAddressData,
+    clearAddresses
 }
 
 export default {

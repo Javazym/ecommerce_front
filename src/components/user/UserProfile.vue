@@ -86,9 +86,12 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User } from '@element-plus/icons-vue'
-import userStore from '../../stores/userStore'
-import {updateUser} from "../../api/modules/user.js";
-import {uploadFile} from "../../api/modules/file.js";
+import { useUserStore } from '../../stores/userStore'
+import { updateUser } from "../../api/modules/user.js"
+import { uploadFile } from "../../api/modules/file.js"
+
+// 使用 Pinia store
+const userStore = useUserStore()
 
 // 保存状态
 const saving = ref(false)

@@ -75,9 +75,17 @@ export function getApplyMerchant() {
     method: 'get',
   });
 }
+
+export function getTheMerchantInfo() {
+  return request({
+    url: '/shopping-server/merchants',
+    method: 'get'
+  });
+}
 export default {
   getMerchantAccount,
   getFinancialData,
   getWithdrawRecords,
-  applyWithdraw
+  applyWithdraw,
+  getTheMerchantInfo
 };

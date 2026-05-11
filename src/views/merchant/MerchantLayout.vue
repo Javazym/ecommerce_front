@@ -101,16 +101,20 @@ import {
   Shop, DataAnalysis, Goods, List, Ticket, Wallet, Setting,
   Fold, Expand, Bell, ArrowDown
 } from '@element-plus/icons-vue'
-import userStore from "../../stores/userStore.js";
+import {useUserStore} from "../../stores/userStore.js";
 import {getCurrentUser} from "../../api/modules/user.js";
+import { clearAllUserData } from '../../stores/clearData.js';
+import {getMerchantInfo} from "../../stores/merchantStore.js";
 
+const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 onMounted(() => {
   getCurrentUser().then(res => {
     console.log(res.data)
-    userStore.userInfo = res.data
+    userStore.userInfo.value = res.data
   })
+  getMerchantInfo()
 })
 // 侧边栏折叠状态
 const isCollapse = ref(false)
@@ -120,7 +124,7 @@ const activeMenu = computed(() => {
   const path = route.path
   if (path.includes('dashboard')) return 'dashboard'
   if (path.includes('products')) return 'products'
-  if (path.includes('merchant-orders')) return 'orders'
+  if (path.includes('orders')) return 'orders'
   if (path.includes('marketing')) return 'marketing'
   if (path.includes('finance')) return 'finance'
   if (path.includes('settings')) return 'settings'
@@ -167,6 +171,8 @@ const handleCommand = async (command) => {
         cancelButtonText: '取消',
         type: 'warning'
       })
+      // 清除所有用户数据
+      clearAllUserData()
       ElMessage.success('已退出登录')
       router.push('/')
     } catch {

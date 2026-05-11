@@ -159,6 +159,55 @@
         </div>
       </div>
     </footer>
+
+    <!-- 优惠券领取弹窗 -->
+    <el-dialog
+      v-model="couponDialogVisible"
+      title="可领取优惠券"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <div v-loading="couponLoading" class="coupon-dialog-content">
+        <div v-if="availableCoupons.length > 0" class="coupon-list">
+          <div
+            v-for="coupon in availableCoupons"
+            :key="coupon.id"
+            class="coupon-item"
+          >
+            <div class="coupon-left">
+              <div class="coupon-value">
+                <span class="currency">¥</span>
+                <span class="amount">{{ coupon.value }}</span>
+              </div>
+              <div class="coupon-condition">{{ coupon.description }}</div>
+            </div>
+
+            <div class="coupon-right">
+              <div class="coupon-name">{{ coupon.name }}</div>
+              <div class="coupon-info">
+                <span class="coupon-type">
+                  {{ coupon.type === 'discount' ? '折扣券' : '满减券' }}
+                </span>
+                <span class="coupon-time">
+                  有效期至：{{ formatDate(coupon.endTime) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="coupon-action">
+              <el-button
+                type="primary"
+                size="small"
+                @click="handleReceiveCoupon(coupon)"
+              >
+                立即领取
+              </el-button>
+            </div>
+          </div>
+        </div>
+        <el-empty v-else description="暂无可领取的优惠券" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -166,12 +215,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Star, ShoppingCart } from '@element-plus/icons-vue'
+import { Star, ShoppingCart, Ticket } from '@element-plus/icons-vue'
 import NavBar from '../components/NavBar.vue'
 import { getProductDetail } from '../api/modules/product.js'
+import { getCouponList, receiveCoupon as apiReceiveCoupon } from '../api/modules/coupon.js'
+import { addToCart } from '../api/modules/cart.js'
+import { useUserStore } from '../stores/userStore.js'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const product = ref({})
 const currentImage = ref('')
@@ -180,11 +233,18 @@ const activeTab = ref('detail')
 const loading = ref(false)
 const selectedSpecs = ref([]) // 存储选中的规格值
 
+// 优惠券相关
+const couponDialogVisible = ref(false)
+const availableCoupons = ref([])
+const couponLoading = ref(false)
+
 // 根据商品ID获取商品信息
 onMounted(async () => {
   const productId = parseInt(route.params.id)
   if (productId) {
     await loadProductDetail(productId)
+    // 加载商品详情后，检查是否有相关优惠券
+    await checkAndShowCoupons()
   }
 })
 
@@ -311,17 +371,44 @@ const handleQuantityChange = (value) => {
 }
 
 // 加入购物车
-const handleAddToCart = () => {
+const handleAddToCart = async () => {
   if (!product.value.id) {
     ElMessage.warning('商品信息加载中')
     return
   }
 
-  const currentSku = getCurrentSku.value
-  const skuInfo = currentSku ? ` (SKU: ${currentSku.skuCode || '默认'})` : ''
+  // 检查用户是否登录
+  if (!userStore.isLoggedIn || !userStore.userId) {
+    ElMessage.warning('请先登录后再添加购物车')
+    router.push('/auth')
+    return
+  }
 
-  ElMessage.success(`已添加 ${quantity.value} 件商品到购物车${skuInfo}`)
-  // TODO: 调用购物车 API，传递商品ID、SKU信息和数量
+  const currentSku = getCurrentSku.value
+  if (!currentSku) {
+    ElMessage.warning('请选择商品规格')
+    return
+  }
+
+  try {
+    // 调用 API 添加到购物车
+    const res = await addToCart({
+      userId: String(userStore.userId),
+      productId: product.value.id,
+      skuId: currentSku.id,
+      quantity: quantity.value
+    })
+
+    if (res.code === 1000) {
+      const skuInfo = currentSku ? ` (SKU: ${currentSku.skuCode || '默认'})` : ''
+      ElMessage.success(`已添加 ${quantity.value} 件商品到购物车${skuInfo}`)
+    } else {
+      ElMessage.error(res.message || '添加失败')
+    }
+  } catch (error) {
+    console.error('添加到购物车失败:', error)
+    ElMessage.error('添加到购物车失败')
+  }
 }
 
 // 立即购买
@@ -346,7 +433,8 @@ const handleBuyNow = () => {
     query: {
       productId: product.value.id,
       skuId: currentSku.id,
-      quantity: quantity.value
+      quantity: quantity.value,
+      merchantId: product.value.merchant.id
     }
   })
 }
@@ -359,6 +447,81 @@ const handleAddToFavorite = () => {
   }
   ElMessage.success('已添加到收藏夹')
   // TODO: 调用收藏 API
+}
+
+// 检查并显示可领取优惠券
+const checkAndShowCoupons = async () => {
+  if (!product.value.merchant?.id) return
+
+  try {
+    couponLoading.value = true
+    const res = await getCouponList({
+      merchantId: product.value.merchant.id,
+      status: 1,  // 只获取启用的优惠券
+    })
+
+    if (res.code === 1000 && res.data?.length > 0) {
+      availableCoupons.value = res.data.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type === 0 ? 'cash' : 'discount',
+        value: item.value,
+        minAmount: item.minAmount,
+        maxDiscount: item.maxDiscount,
+        totalCount: item.totalCount,
+        receiveCount: item.receiveCount,
+        usedCount: item.usedCount,
+        limitPerUser: item.limitPerUser,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        description: `${item.minAmount > 0 ? '满' + item.minAmount + '元' : '无门槛'}可用`
+      }))
+
+      // 有可领取的优惠券时自动弹出
+      if (availableCoupons.value.length > 0) {
+        couponDialogVisible.value = true
+      }
+    }
+  } catch (error) {
+    console.error('获取优惠券失败:', error)
+  } finally {
+    couponLoading.value = false
+  }
+}
+
+// 领取优惠券
+const handleReceiveCoupon = async (coupon) => {
+  if (!userStore.isLoggedIn || !userStore.userId) {
+    ElMessage.warning('请先登录后再领取优惠券')
+    router.push('/auth')
+    return
+  }
+
+  try {
+    await apiReceiveCoupon(coupon.id)
+
+    ElMessage.success('领取成功')
+
+    // 从列表中移除已领取的优惠券或标记为已领取
+    const index = availableCoupons.value.findIndex(c => c.id === coupon.id)
+    if (index > -1) {
+      availableCoupons.value.splice(index, 1)
+    }
+
+    // 如果列表为空，关闭弹窗
+    if (availableCoupons.value.length === 0) {
+      couponDialogVisible.value = false
+    }
+  } catch (error) {
+    console.error('领取失败:', error)
+    ElMessage.error(error.message || '领取失败')
+  }
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  return dateStr.split(' ')[0]  // 只保留日期部分
 }
 </script>
 
@@ -751,5 +914,102 @@ const handleAddToFavorite = () => {
       color: #78909c;
     }
   }
+}
+
+// 优惠券弹窗样式
+.coupon-dialog-content {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.coupon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coupon-item {
+  display: flex;
+  align-items: center;
+  border: 2px solid #ff6b6b;
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+  }
+}
+
+.coupon-left {
+  min-width: 100px;
+  text-align: center;
+  border-right: 1px dashed #ff6b6b;
+  padding-right: 16px;
+}
+
+.coupon-value {
+  color: #ff6b6b;
+  font-size: 28px;
+  font-weight: 700;
+
+  .currency {
+    font-size: 16px;
+  }
+
+  .amount {
+    font-size: 32px;
+  }
+}
+
+.coupon-condition {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.coupon-right {
+  flex: 1;
+  padding: 0 16px;
+}
+
+.coupon-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.coupon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.coupon-action {
+  min-width: 80px;
 }
 </style>

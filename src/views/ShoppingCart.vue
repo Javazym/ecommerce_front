@@ -16,7 +16,7 @@
         </div>
 
         <!-- 购物车内容 -->
-        <div class="cart-content" v-if="cartItems.length > 0">
+        <div class="cart-content" v-if="cartItems.length > 0" v-loading="loading">
           <!-- 购物车商品列表 -->
           <div class="cart-products">
             <!-- 全选 -->
@@ -194,65 +194,151 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ShoppingCart, Delete, Star, Goods } from '@element-plus/icons-vue'
 import NavBar from '../components/NavBar.vue'
 import { products } from '../data/products.js'
+import {
+  getCartList,
+  updateCartQuantity,
+  toggleCartItemChecked,
+  toggleSelectAll,
+  deleteCartItem,
+  batchDeleteCartItems,
+  getCartStatistics
+} from '../api/modules/cart.js'
+import { getCouponList } from '../api/modules/coupon.js'
+import { useUserStore } from '../stores/userStore.js'
+import {getProductDetail, getRecommendedProducts} from "../api/modules/product.js";
 
 const router = useRouter()
+const userStore = useUserStore()
 
-// 模拟购物车数据
-const cartItems = ref([
-  {
-    id: 1,
-    name: 'Apple AirPods Pro 2',
-    price: 1899,
-    originalPrice: 2199,
-    image: 'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=400',
-    description: '主动降噪，空间音频',
-    quantity: 1,
-    selected: true
-  },
-  {
-    id: 2,
-    name: 'Nike Air Max 270',
-    price: 799,
-    originalPrice: 999,
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    description: '经典气垫运动鞋',
-    quantity: 1,
-    selected: true
-  },
-  {
-    id: 3,
-    name: 'Dyson V15吸尘器',
-    price: 4990,
-    originalPrice: 5990,
-    image: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400',
-    description: '激光探测，强劲吸力',
-    quantity: 1,
-    selected: false
-  }
-])
+// 购物车数据
+const cartItems = ref([])
+const loading = ref(false)
 
 // 优惠券列表
-const coupons = ref([
-  { id: 1, label: '满500减30', value: '-¥30', minAmount: 500 },
-  { id: 2, label: '满1000减80', value: '-¥80', minAmount: 1000 },
-  { id: 3, label: '满2000减200', value: '-¥200', minAmount: 2000 },
-  { id: 4, label: '满5000减500', value: '-¥500', minAmount: 5000 }
-])
-
+const coupons = ref([])
 const selectedCoupon = ref(null)
+
+// 全选状态
 const selectAll = ref(false)
 const isIndeterminate = ref(false)
+const recommendProducts = ref([])
+// 统计信息
+const statistics = ref({
+  totalCount: 0,
+  selectedCount: 0,
+  totalAmount: 0,
+  selectedAmount: 0
+})
 
-// 推荐商品
-const recommendProducts = computed(() => {
-  return products.filter(p => !cartItems.value.find(item => item.id === p.id)).slice(0, 4)
+// 加载购物车数据
+const loadCartData = async () => {
+  if (!userStore.isLoggedIn || !userStore.userId) {
+    ElMessage.warning('请先登录')
+    router.push('/auth')
+    return
+  }
+
+  loading.value = true
+  try {
+    // 获取购物车列表
+    const res = await getCartList()
+    if (res.code === 1000 && res.data) {
+      // 适配接口返回的数据结构
+      cartItems.value = (res.data || []).map(item => ({
+        id: item.id,
+        productId: item.productId,
+        skuId: item.skuId,
+        name: item.productName,
+        description: item.skuSpecs || '',
+        price: item.price,
+        image: item.productImage,
+        quantity: item.quantity,
+        stock: item.stock,
+        selected: item.checked === 1,
+        valid: item.valid
+      }))
+
+      // 更新全选状态
+      updateSelectAllState()
+    } else {
+      ElMessage.error(res.message || '获取购物车失败')
+    }
+
+    // 获取统计信息
+    await loadStatistics()
+
+    // 获取优惠券列表
+    await loadCoupons()
+  } catch (error) {
+    console.error('加载购物车数据失败:', error)
+    ElMessage.error('加载购物车数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载统计信息
+const loadStatistics = async () => {
+  if (!userStore.isLoggedIn || !userStore.userId) return
+
+  try {
+    const res = await getCartStatistics(String(userStore.userId))
+    if (res.code === 1000 && res.data) {
+      statistics.value = res.data
+    }
+  } catch (error) {
+    console.error('获取统计信息失败:', error)
+  }
+}
+
+// 加载优惠券列表
+const loadCoupons = async () => {
+  if (!userStore.isLoggedIn || !userStore.userId) return
+
+  try {
+    // 这里假设获取用户可用的优惠券，实际可能需要根据业务调整
+    const res = await getCouponList({
+      userId: String(userStore.userId),
+      status: 1, // 只获取启用的优惠券
+      pageNum: 1,
+      pageSize: 10
+    })
+
+    if (res.code === 1000 && res.data && res.data.content) {
+      coupons.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        label: `${item.name} (满${item.minAmount}减${item.value})`,
+        value: `-¥${item.value}`,
+        minAmount: item.minAmount
+      }))
+    }
+  } catch (error) {
+    console.error('获取优惠券列表失败:', error)
+  }
+}
+
+// 更新全选状态
+const updateSelectAllState = () => {
+  const selected = cartItems.value.filter(item => item.selected)
+  selectAll.value = selected.length === cartItems.value.length && cartItems.value.length > 0
+  isIndeterminate.value = selected.length > 0 && selected.length < cartItems.value.length
+}
+const loadRecommendProducts = async () => {
+  await getRecommendedProducts({
+    limit: 5
+  }).then(res => {
+    recommendProducts.value = res.data
+  })
+}
+// 页面加载时获取数据
+onMounted(() => {
+  loadCartData()
+  loadRecommendProducts()
 })
 
 // 计算属性
 const totalPrice = computed(() => {
-  return cartItems.value
-    .filter(item => item.selected)
-    .reduce((sum, item) => sum + item.price * item.quantity, 0)
+  return statistics.value.selectedAmount || 0
 })
 
 const discount = computed(() => {
@@ -275,27 +361,87 @@ const finalPrice = computed(() => {
 })
 
 const selectedCount = computed(() => {
-  return cartItems.value.filter(item => item.selected).length
+  return statistics.value.selectedCount || 0
 })
 
 // 全选处理
-const handleSelectAll = (val) => {
-  cartItems.value.forEach(item => {
-    item.selected = val
-  })
-  isIndeterminate.value = false
+const handleSelectAll = async (val) => {
+  if (!userStore.isLoggedIn || !userStore.userId) return
+
+  try {
+    // 调用 API 全选/取消全选
+    const res = await toggleSelectAll({
+      userId: String(userStore.userId),
+      checked: val ? 1 : 0
+    })
+
+    if (res.code === 1000) {
+      // 更新本地状态
+      cartItems.value.forEach(item => {
+        item.selected = val
+      })
+      isIndeterminate.value = false
+      // 重新加载统计信息
+      await loadStatistics()
+    } else {
+      ElMessage.error(res.message || '操作失败')
+    }
+  } catch (error) {
+    console.error('全选操作失败:', error)
+    ElMessage.error('操作失败')
+  }
 }
 
 // 单选处理
-const handleItemSelect = () => {
-  const selected = cartItems.value.filter(item => item.selected)
-  selectAll.value = selected.length === cartItems.value.length
-  isIndeterminate.value = selected.length > 0 && selected.length < cartItems.value.length
+const handleItemSelect = async (item) => {
+  if (!userStore.isLoggedIn || !userStore.userId) return
+
+  try {
+    // 调用 API 选中/取消选中
+    const res = await toggleCartItemChecked(item.id, {
+      userId: String(userStore.userId),
+      checked: item.selected ? 1 : 0
+    })
+
+    if (res.code === 1000) {
+      // 更新全选状态
+      updateSelectAllState()
+      // 重新加载统计信息
+      await loadStatistics()
+    } else {
+      ElMessage.error(res.message || '操作失败')
+      // 恢复原状态
+      item.selected = !item.selected
+    }
+  } catch (error) {
+    console.error('选中操作失败:', error)
+    ElMessage.error('操作失败')
+    // 恢复原状态
+    item.selected = !item.selected
+  }
 }
 
 // 数量变化
-const handleQuantityChange = (item) => {
-  console.log('数量变化:', item)
+const handleQuantityChange = async (item) => {
+  if (!userStore.isLoggedIn || !userStore.userId) return
+
+  try {
+    // 调用 API 更新数量
+    const res = await updateCartQuantity(item.id, {
+      userId: String(userStore.userId),
+      quantity: item.quantity
+    })
+
+    if (res.code === 1000) {
+      // 重新加载统计信息
+      await loadStatistics()
+    } else {
+      ElMessage.error(res.message || '更新失败')
+    }
+  } catch (error) {
+    console.error('更新数量失败:', error)
+    ElMessage.error('更新数量失败')
+  }
 }
 
 // 删除单个商品
@@ -310,13 +456,29 @@ const handleDeleteItem = async (item) => {
         type: 'warning'
       }
     )
-    const index = cartItems.value.findIndex(i => i.id === item.id)
-    if (index > -1) {
-      cartItems.value.splice(index, 1)
+
+    if (!userStore.isLoggedIn || !userStore.userId) return
+
+    // 调用 API 删除
+    const res = await deleteCartItem(item.id, String(userStore.userId))
+    if (res.code === 1000) {
+      // 从列表中移除
+      const index = cartItems.value.findIndex(i => i.id === item.id)
+      if (index > -1) {
+        cartItems.value.splice(index, 1)
+      }
       ElMessage.success('已删除')
+      // 更新全选状态和统计信息
+      updateSelectAllState()
+      await loadStatistics()
+    } else {
+      ElMessage.error(res.message || '删除失败')
     }
-  } catch {
-    // 用户取消
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除商品失败:', error)
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -338,10 +500,31 @@ const handleDeleteSelected = async () => {
         type: 'warning'
       }
     )
-    cartItems.value = cartItems.value.filter(item => !item.selected)
-    ElMessage.success('已删除')
-  } catch {
-    // 用户取消
+
+    if (!userStore.isLoggedIn || !userStore.userId) return
+
+    // 调用 API 批量删除
+    const itemIds = selected.map(item => item.id)
+    const res = await batchDeleteCartItems({
+      userId: String(userStore.userId),
+      ids: itemIds
+    })
+
+    if (res.code === 1000) {
+      // 从列表中移除
+      cartItems.value = cartItems.value.filter(item => !item.selected)
+      ElMessage.success('已删除')
+      // 更新全选状态和统计信息
+      updateSelectAllState()
+      await loadStatistics()
+    } else {
+      ElMessage.error(res.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+      ElMessage.error('删除失败')
+    }
   }
 }
 

@@ -194,6 +194,23 @@ function calculateDiscount(coupon, orderAmount) {
   return Math.min(discount, orderAmount)
 }
 
+// 方法：清除优惠券数据
+function clearCoupons() {
+  state.coupons = []
+  state.pagination = {
+    pageNum: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0
+  }
+  state.statistics = {
+    total: 0,
+    available: 0,
+    used: 0,
+    expired: 0
+  }
+}
+
 export {
   state,
   availableCoupons,
@@ -205,7 +222,8 @@ export {
   useCoupon,
   updateStatistics,
   isCouponAvailable,
-  calculateDiscount
+  calculateDiscount,
+  clearCoupons
 }
 
 export default state

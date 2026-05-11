@@ -177,6 +177,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Money, User, OfficeBuilding, Warning, Wallet } from '@element-plus/icons-vue'
+import { getPlatformStatistics, getPendingApplications, auditMerchantApplication } from '../../api/modules/admin.js'
+import { getOrderList } from '../../api/modules/order.js'
 
 const router = useRouter()
 
@@ -185,17 +187,14 @@ const chartPeriod = ref('7')
 
 // 统计数据
 const stats = ref({
-  totalGMV: 2568000,
-  totalUsers: 56800,
-  totalMerchants: 128,
-  pendingTasks: 15
+  totalGMV: 0,
+  totalUsers: 0,
+  totalMerchants: 0,
+  pendingTasks: 0
 })
 
 // 待审核商家
-const pendingMerchants = ref([
-  { id: 1, name: '数码专营店', avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100', applyTime: '2024-01-15 10:30' },
-  { id: 2, name: '潮流服饰店', avatar: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=100', applyTime: '2024-01-15 09:20' }
-])
+const pendingMerchants = ref([])
 
 // 待处理提现
 const pendingWithdrawals = ref([
@@ -204,19 +203,16 @@ const pendingWithdrawals = ref([
 ])
 
 // 最近订单
-const recentOrders = ref([
-  { orderNo: 'YS202401150001', merchantName: '云商城旗舰店', userName: '用户1234', amount: 2698, status: 'completed', createTime: '2024-01-15 14:30:25' },
-  { orderNo: 'YS202401150002', merchantName: '数码专营店', userName: '买家5678', amount: 4990, status: 'shipped', createTime: '2024-01-15 10:15:30' },
-  { orderNo: 'YS202401140003', merchantName: '潮流服饰店', userName: '顾客9012', amount: 899, status: 'paid', createTime: '2024-01-14 16:20:15' }
-])
+const recentOrders = ref([])
 
 // 获取状态类型
 const getStatusType = (status) => {
   const typeMap = {
-    pending: 'info',
-    paid: 'warning',
-    shipped: 'primary',
-    completed: 'success'
+    0: 'info',      // 待付款
+    1: 'warning',   // 待发货
+    2: 'primary',   // 已发货
+    3: 'success',   // 已完成
+    4: 'danger'     // 已取消
   }
   return typeMap[status] || 'info'
 }
@@ -224,10 +220,11 @@ const getStatusType = (status) => {
 // 获取状态文本
 const getStatusText = (status) => {
   const textMap = {
-    pending: '待付款',
-    paid: '待发货',
-    shipped: '已发货',
-    completed: '已完成'
+    0: '待付款',
+    1: '待发货',
+    2: '已发货',
+    3: '已完成',
+    4: '已取消'
   }
   return textMap[status] || '未知'
 }
@@ -240,13 +237,30 @@ const approveMerchant = async (merchant) => {
       cancelButtonText: '取消',
       type: 'success'
     })
-    const index = pendingMerchants.value.findIndex(m => m.id === merchant.id)
-    if (index > -1) {
-      pendingMerchants.value.splice(index, 1)
+    
+    const res = await auditMerchantApplication({
+      id: merchant.id,
+      status: 1,
+      remark: '恭喜你的入驻申请通过'
+    })
+    
+    if (res.code === 1000) {
+      const index = pendingMerchants.value.findIndex(m => m.id === merchant.id)
+      if (index > -1) {
+        pendingMerchants.value.splice(index, 1)
+      }
+      ElMessage.success('商家入驻已通过')
+      // 重新加载统计数据
+      loadStatistics()
+      loadPendingMerchants()
+    } else {
+      throw new Error(res.message || '审核失败')
     }
-    ElMessage.success('商家入驻已通过')
-  } catch {
-    // 取消
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('审核失败:', error)
+      ElMessage.error(error.message || '审核失败')
+    }
   }
 }
 
@@ -258,13 +272,30 @@ const rejectMerchant = async (merchant) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const index = pendingMerchants.value.findIndex(m => m.id === merchant.id)
-    if (index > -1) {
-      pendingMerchants.value.splice(index, 1)
+    
+    const res = await auditMerchantApplication({
+      id: merchant.id,
+      status: 2,
+      remark: '很抱歉，您的入驻申请未通过审核'
+    })
+    
+    if (res.code === 1000) {
+      const index = pendingMerchants.value.findIndex(m => m.id === merchant.id)
+      if (index > -1) {
+        pendingMerchants.value.splice(index, 1)
+      }
+      ElMessage.success('已拒绝商家入驻申请')
+      // 重新加载统计数据
+      loadStatistics()
+      loadPendingMerchants()
+    } else {
+      throw new Error(res.message || '操作失败')
     }
-    ElMessage.success('已拒绝商家入驻申请')
-  } catch {
-    // 取消
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
   }
 }
 
@@ -308,6 +339,66 @@ const rejectWithdrawal = async (withdrawal) => {
 const goToMerchants = () => router.push('/admin/merchants')
 const goToFinance = () => router.push('/admin/finance')
 const goToOrders = () => router.push('/admin/orders')
+
+// 加载平台统计数据
+const loadStatistics = async () => {
+  try {
+    const res = await getPlatformStatistics()
+    if (res.code === 1000 && res.data) {
+      stats.value = {
+        totalGMV: res.data.totalSales || 0,
+        totalUsers: res.data.totalUsers || 0,
+        totalMerchants: res.data.totalMerchants || 0,
+        pendingTasks: (res.data.pendingRefunds || 0) + (res.data.pendingAudits || 0)
+      }
+    }
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  }
+}
+
+// 加载待审核商家
+const loadPendingMerchants = async () => {
+  try {
+    const res = await getPendingApplications({ pageNum: 1, pageSize: 5 })
+    if (res.code === 1000 && res.data) {
+      pendingMerchants.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        name: item.storeName,
+        avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100', // 临时使用默认头像
+        applyTime: item.applyTime
+      }))
+    }
+  } catch (error) {
+    console.error('加载待审核商家失败:', error)
+  }
+}
+
+// 加载最近订单
+const loadRecentOrders = async () => {
+  try {
+    const res = await getOrderList({ pageNum: 1, pageSize: 5 })
+    if (res.code === 1000 && res.data) {
+      recentOrders.value = (res.data.content || []).map(item => ({
+        orderNo: item.orderNo,
+        merchantName: item.merchantName || '未知商家',
+        userName: item.userName || '未知用户',
+        amount: item.actualAmount || 0,
+        status: item.status,
+        createTime: item.createTime
+      }))
+    }
+  } catch (error) {
+    console.error('加载最近订单失败:', error)
+  }
+}
+
+// 初始加载
+onMounted(() => {
+  loadStatistics()
+  loadPendingMerchants()
+  loadRecentOrders()
+})
 </script>
 
 <style scoped lang="scss">

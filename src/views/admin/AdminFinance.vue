@@ -27,7 +27,7 @@
       <el-col :span="6">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <div class="stat-icon" style="background: #fff7e6;"><el-icon style="color: #e6a23c;">&lt;Wallet /></el-icon></div>
+            <div class="stat-icon" style="background: #fff7e6;"><el-icon style="color: #e6a23c;"><Wallet /></el-icon></div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.pendingWithdrawals }}</div>
               <div class="stat-label">待审核提现</div>
@@ -38,7 +38,7 @@
       <el-col :span="6">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <div class="stat-icon" style="background: #fff1f0;"><el-icon style="color: #f56c6c;">&lt;CreditCard /></el-icon></div>
+            <div class="stat-icon" style="background: #fff1f0;"><el-icon style="color: #f56c6c;"><CreditCard /></el-icon></div>
             <div class="stat-info">
               <div class="stat-value">¥{{ stats.refunds.toLocaleString() }}</div>
               <div class="stat-label">本月退款</div>
@@ -67,7 +67,7 @@
           <el-table-column prop="amount" label="金额" width="120">
             <template #default="{ row }"><span class="amount">¥{{ row.amount.toLocaleString() }}</span></template>
           </el-table-column>
-          <el-table-column prop="fee" label="手续费" width="80">¥{{ row.fee }}</el-table-column>
+          <el-table-column prop="fee" label="手续费" width="80">¥{{}}</el-table-column>
           <el-table-column prop="applyTime" label="申请时间" width="180" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }"><el-tag :type="row.status === 'pending' ? 'warning' : 'info'" size="small">{{ row.status === 'pending' ? '待审核' : '已处理' }}</el-tag></template>

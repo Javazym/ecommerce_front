@@ -171,7 +171,15 @@
 import {onMounted, ref} from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
-import {auditMerchantApplication, getAllApplications, getMerchantsByStatus} from "../../api/modules/admin.js";
+import {
+  auditMerchantApplication,
+  getAllApplications,
+  getMerchantsByStatus,
+  getAllMerchants,
+  updateMerchantStatus,
+  deleteMerchant as deleteMerchantApi,
+  getMerchantsGroupedByCategory
+} from "../../api/modules/admin.js";
 
 // Tab
 const activeTab = ref('audit')
@@ -183,45 +191,25 @@ const pageSize = ref(10)
 const total = ref(0)
 
 // 审核列表
-const auditCount = ref(3)
-const auditList = ref([
-  {
-    id: 1,
-    name: '数码专营店',
-    category: '数码电子',
-    avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100',
-    contact: '张先生',
-    phone: '138****8888',
-    applyTime: '2024-01-15 10:30:25',
-    license: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400',
-    idCardFront: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400',
-    idCardBack: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400'
-  },
-  {
-    id: 2,
-    name: '潮流服饰店',
-    category: '服饰服装',
-    avatar: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=100',
-    contact: '李女士',
-    phone: '139****9999',
-    applyTime: '2024-01-15 09:20:15',
-    license: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400',
-    idCardFront: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400',
-    idCardBack: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400'
-  },
-  {
-    id: 3,
-    name: '家居生活馆',
-    category: '家居生活',
-    avatar: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=100',
-    contact: '王先生',
-    phone: '137****7777',
-    applyTime: '2024-01-14 16:45:30',
-    license: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400',
-    idCardFront: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400',
-    idCardBack: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400'
+const auditCount = ref(0)
+const auditList = ref([])
+
+// 加载待审核商家
+const loadAuditList = async () => {
+  loading.value = true
+  try {
+    const res = await getMerchantsByStatus(0, { pageNum: 1, pageSize: 50 })
+    if (res.code === 1000 && res.data) {
+      auditList.value = res.data.content || []
+      auditCount.value = res.data.totalElements || 0
+    }
+  } catch (error) {
+    console.error('加载待审核商家失败:', error)
+    ElMessage.error('加载待审核商家失败')
+  } finally {
+    loading.value = false
   }
-])
+}
 onMounted(() => {
   getMerchantsByStatus(0).then(res => {
     auditList.value = res.data['content']
@@ -229,18 +217,58 @@ onMounted(() => {
 })
 
 // 商家列表
-const merchantList = ref([
-  { id: 1, name: '云商城旗舰店', category: '综合商城', avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100', owner: '张三', products: 156, orders: 528, sales: 256800, status: 'active' },
-  { id: 2, name: '数码专营店', category: '数码电子', avatar: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=100', owner: '李四', products: 89, orders: 256, sales: 128500, status: 'active' },
-  { id: 3, name: '潮流服饰店', category: '服饰服装', avatar: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=100', owner: '王五', products: 234, orders: 189, sales: 89600, status: 'active' }
-])
+const merchantList = ref([])
+
+// 加载商家列表
+const loadMerchantList = async () => {
+  loading.value = true
+  try {
+    const res = await getAllMerchants({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value
+    })
+    if (res.code === 1000 && res.data) {
+      merchantList.value = (res.data.content || []).map(item => ({
+        id: item.id,
+        name: item.storeName,
+        category: Array.isArray(item.category) ? item.category.join(', ') : (item.category || ''),
+        avatar: item.storeLogo || 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100',
+        owner: item.contactName || '',
+        products: item.productCount || 0,
+        orders: item.orderCount || 0,
+        sales: item.sales || 0,
+        status: item.status === 1 ? 'active' : 'closed'
+      }))
+      total.value = res.data.totalElements || 0
+    }
+  } catch (error) {
+    console.error('加载商家列表失败:', error)
+    ElMessage.error('加载商家列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 // 分组列表
-const groupList = ref([
-  { id: 1, name: '旗舰店', description: '平台认证优质商家', merchantCount: 15, commission: 5 },
-  { id: 2, name: '专营店', description: '品牌授权商家', merchantCount: 28, commission: 7 },
-  { id: 3, name: '普通店', description: '普通商家', merchantCount: 85, commission: 10 }
-])
+const groupList = ref([])
+
+// 加载商家分组
+const loadGroupList = async () => {
+  try {
+    const res = await getMerchantsGroupedByCategory()
+    if (res.code === 1000 && res.data) {
+      groupList.value = (res.data || []).map((item, index) => ({
+        id: index + 1,
+        name: item.categoryName,
+        description: item.categoryDescription || '',
+        merchantCount: item.merchantCount || 0,
+        commission: 5 // 默认抽成，后续可从配置获取
+      }))
+    }
+  } catch (error) {
+    console.error('加载商家分组失败:', error)
+  }
+}
 
 // 资质弹窗
 const licenseDialogVisible = ref(false)
@@ -261,6 +289,11 @@ const getStatusText = (status) => {
 // Tab切换
 const handleTabChange = (tab) => {
   currentPage.value = 1
+  if (tab === 'list') {
+    loadMerchantList()
+  } else if (tab === 'groups') {
+    loadGroupList()
+  }
 }
 
 // 查看资质
@@ -272,43 +305,59 @@ const viewLicense = (merchant) => {
 // 审核通过
 const approveMerchant = async (merchant) => {
   try {
-    await ElMessageBox.confirm(`确定通过商家 "${merchant.name}" 的入驻申请吗？`, '提示', {
+    await ElMessageBox.confirm(`确定通过商家 "${merchant.storeName}" 的入驻申请吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'success'
     })
-    await auditMerchantApplication({
+    
+    const res = await auditMerchantApplication({
       id: merchant.id,
       status: 1,
       remark: '恭喜你的入驻申请通过'
-    }).then(res => {
-      if (res.code === 1000) {
-        getMerchantsByStatus(0).then(res => {
-          auditList.value = res.data['content']
-        })
-        auditCount.value--
-      }
     })
-    merchantList.value.unshift({ ...merchant, status: 'active', products: 0, orders: 0, sales: 0 })
-    ElMessage.success('商家入驻已通过')
-  } catch {}
+    
+    if (res.code === 1000) {
+      ElMessage.success('商家入驻已通过')
+      loadAuditList() // 重新加载审核列表
+    } else {
+      throw new Error(res.message || '审核失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('审核失败:', error)
+      ElMessage.error(error.message || '审核失败')
+    }
+  }
 }
 
 // 审核拒绝
 const rejectMerchant = async (merchant) => {
   try {
-    await ElMessageBox.confirm(`确定拒绝商家 "${merchant.name}" 的入驻申请吗？`, '提示', {
+    await ElMessageBox.confirm(`确定拒绝商家 "${merchant.storeName}" 的入驻申请吗？`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const index = auditList.value.findIndex(m => m.id === merchant.id)
-    if (index > -1) {
-      auditList.value.splice(index, 1)
-      auditCount.value--
+    
+    const res = await auditMerchantApplication({
+      id: merchant.id,
+      status: 2,
+      remark: '很抱歉，您的入驻申请未通过审核'
+    })
+    
+    if (res.code === 1000) {
+      ElMessage.success('已拒绝商家入驻申请')
+      loadAuditList() // 重新加载审核列表
+    } else {
+      throw new Error(res.message || '操作失败')
     }
-    ElMessage.success('已拒绝商家入驻申请')
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
 }
 
 // 查看详情
@@ -324,32 +373,84 @@ const closeMerchant = async (merchant) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    merchant.status = 'closed'
-    ElMessage.success('商家已关闭')
-  } catch {}
+    
+    const res = await updateMerchantStatus(merchant.id, 0)
+    if (res.code === 1000) {
+      ElMessage.success('商家已关闭')
+      loadMerchantList() // 重新加载列表
+    } else {
+      throw new Error(res.message || '操作失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
 }
 
 // 开启商家
 const openMerchant = async (merchant) => {
-  merchant.status = 'active'
-  ElMessage.success('商家已开启')
+  try {
+    await ElMessageBox.confirm(`确定要开启商家 "${merchant.name}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'success'
+    })
+    
+    const res = await updateMerchantStatus(merchant.id, 1)
+    if (res.code === 1000) {
+      ElMessage.success('商家已开启')
+      loadMerchantList() // 重新加载列表
+    } else {
+      throw new Error(res.message || '操作失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error)
+      ElMessage.error(error.message || '操作失败')
+    }
+  }
 }
 
 // 删除商家
 const deleteMerchant = async (merchant) => {
   try {
-    await ElMessageBox.confirm(`确定要删除商家 "${merchant.name}" 吗？`, '提示', {
+    await ElMessageBox.confirm(`确定要删除商家 "${merchant.name}" 吗？此操作不可恢复！`, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const index = merchantList.value.findIndex(m => m.id === merchant.id)
-    if (index > -1) {
-      merchantList.value.splice(index, 1)
+    
+    const res = await deleteMerchantApi(merchant.id)
+    if (res.code === 1000) {
+      ElMessage.success('删除成功')
+      loadMerchantList() // 重新加载列表
+    } else {
+      throw new Error(res.message || '删除失败')
     }
-    ElMessage.success('删除成功')
-  } catch {}
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
 }
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  loadMerchantList()
+}
+
+const handleCurrentChange = (page) => {
+  currentPage.value = page
+  loadMerchantList()
+}
+
+// 初始加载
+onMounted(() => {
+  loadAuditList()
+})
 </script>
 
 <style scoped lang="scss">

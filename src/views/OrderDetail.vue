@@ -192,6 +192,14 @@
             >
               确认收货
             </el-button>
+            <el-button
+              v-if="orderInfo.status === 5 || orderInfo.status === 6"
+              type="primary"
+              size="large"
+              @click="goToRefundDetail"
+            >
+              查看退款详情
+            </el-button>
           </div>
         </template>
       </div>
@@ -215,6 +223,7 @@ import { Document, ArrowLeft, CopyDocument, Star } from '@element-plus/icons-vue
 import NavBar from '../components/NavBar.vue'
 import ReviewModal from '../components/ReviewModal.vue'
 import { getOneOrderDetail, confirmReceipt, payOrder } from '../stores/orderStore.js'
+import { addReview } from '../api/modules/review.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -329,7 +338,7 @@ const loadOrderData = async () => {
     }
 
     // 从 store 获取订单详情（调用真实 API）
-    const order = await getOrderDetail(orderId)
+    const order = await getOneOrderDetail(orderId)
 
     if (order) {
       // 适配 API 返回的数据结构到组件需要的格式
@@ -409,8 +418,14 @@ const openReview = (item) => {
 // 提交评价
 const handleReviewSubmit = async (reviewData) => {
   try {
-    // TODO: 调用评价 API
-    // await submitReview(reviewData)
+    // 调用评价 API
+    await addReview({
+      orderId: orderInfo.value.id,
+      productId: reviewData.productId,
+      rating: reviewData.rating,
+      content: reviewData.content,
+      images: reviewData.images || []
+    })
 
     // 更新本地状态
     const product = productList.value.find(p => p.productId === reviewData.productId)
@@ -419,6 +434,7 @@ const handleReviewSubmit = async (reviewData) => {
     }
 
     ElMessage.success('评价成功！感谢您的反馈')
+    reviewVisible.value = false
   } catch (error) {
     console.error('评价失败:', error)
     ElMessage.error('评价失败，请重试')
@@ -428,6 +444,15 @@ const handleReviewSubmit = async (reviewData) => {
 // 搜索
 const handleSearch = (query) => {
   router.push({ path: '/', query: { search: query } })
+}
+
+// 跳转到退款详情
+const goToRefundDetail = () => {
+  if (orderInfo.value.refundId) {
+    router.push(`/refund/${orderInfo.value.refundId}`)
+  } else {
+    ElMessage.info('未找到退款信息')
+  }
 }
 
 onMounted(() => {

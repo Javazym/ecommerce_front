@@ -4,7 +4,7 @@
  */
 import { reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import {applyMerchant, getApplyMerchant} from "../api/modules/merchant.js";
+import {applyMerchant, getApplyMerchant, getTheMerchantInfo} from "../api/modules/merchant.js";
 
 // 创建商家状态
 const state = reactive({
@@ -133,7 +133,7 @@ async function submitApplication(formData) {
 // ==========================================
 async function getMerchantInfo() {
   try {
-    const res = await getApplyMerchant()
+    const res = await getTheMerchantInfo()
     if (res.code === 1000 && res.data) {
       updateMerchantInfo(res.data)
       state.applicationStatus = {
@@ -209,6 +209,51 @@ function getStoreTypeName(type) {
   return storeTypeMap[type] || type
 }
 
+// ==========================================
+// 清除商家数据
+// ==========================================
+function clearMerchantData() {
+  state.applicationStatus = {
+    status: null,
+    submitTime: null,
+    reviewTime: null,
+    rejectReason: null
+  }
+  state.merchantInfo = {
+    id: 1,
+    userId: '',
+    storeName: '',
+    storeLogo: '',
+    storeBanner: '',
+    storeDescription: '',
+    storeType: '',
+    storeTypeName: '',
+    category: '',
+    categoryName: '',
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+    businessLicense: '',
+    idCardFront: '',
+    idCardBack: '',
+    status: '',
+    statusText: '',
+    createTime: '',
+    auditTime: ''
+  }
+  state.applicationForm = {
+    storeName: '',
+    storeType: '',
+    category: '',
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+    businessLicense: null,
+    idCardFront: null,
+    idCardBack: null
+  }
+}
+
 export {
   state,
   storeTypeMap,
@@ -220,7 +265,8 @@ export {
   resubmitApplication,
   hasApplied,
   isPending,
-  getStoreTypeName
+  getStoreTypeName,
+  clearMerchantData
 }
 
 export default state
