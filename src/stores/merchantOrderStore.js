@@ -62,8 +62,8 @@ const state = reactive({
 })
 
 // 方法：获取商家ID
-const getMerchantId = () => {
-  getMerchantInfo()
+const getMerchantId = async () => {
+  await getMerchantInfo()
   console.log('merchantStore.merchantInfo:', merchantStore.merchantInfo)
   const merchantId = merchantStore.merchantInfo?.id
   console.log('获取到的 merchantId:', merchantId)
@@ -176,7 +176,7 @@ async function shipOrder(orderId, logisticsData) {
 // 方法：同意退款
 async function approveRefund(refundId) {
   try {
-    const merchantId = getMerchantId()
+    const merchantId = await getMerchantId()
     if (!merchantId) {
       ElMessage.error('未找到商家信息')
       return false
@@ -198,7 +198,7 @@ async function approveRefund(refundId) {
 // 方法：拒绝退款
 async function rejectRefund(refundId, reason) {
   try {
-    const merchantId = getMerchantId()
+    const merchantId = await getMerchantId()
     if (!merchantId) {
       ElMessage.error('未找到商家信息')
       return false
@@ -226,7 +226,7 @@ async function rejectRefund(refundId, reason) {
 async function fetchRefundList(params = {}) {
   state.loading = true
   try {
-    const merchantId = getMerchantId()
+    const merchantId = await getMerchantId()
     if (!merchantId) {
       ElMessage.error('未找到商家信息')
       return
@@ -262,6 +262,7 @@ async function fetchRefundList(params = {}) {
 async function fetchOrderStatistics() {
   try {
     const merchantId = getMerchantId()
+    console.log(merchantId)
     if (!merchantId) {
       ElMessage.error('未找到商家信息')
       return
@@ -279,7 +280,8 @@ async function fetchOrderStatistics() {
 // 方法：获取订单状态统计
 async function fetchOrderStatusCount() {
   try {
-    const merchantId = getMerchantId()
+    const merchantId = await getMerchantId()
+    console.log(merchantStore.merchantInfo)
     if (!merchantId) {
       ElMessage.error('未找到商家信息')
       return
@@ -289,6 +291,7 @@ async function fetchOrderStatusCount() {
     if (res.code === 1000 && res.data) {
       state.statusCount = res.data
     }
+    console.log(merchantStore.merchantInfo)
   } catch (error) {
     console.error('获取订单状态统计失败:', error)
   }

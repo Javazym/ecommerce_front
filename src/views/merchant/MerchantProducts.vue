@@ -105,147 +105,315 @@
     <el-dialog
       v-model="productDialogVisible"
       :title="editingProduct ? '编辑商品' : '发布商品'"
-      width="900px"
+      width="1000px"
       :close-on-click-modal="false"
       class="product-dialog"
+      destroy-on-close
     >
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" type="border-card" class="custom-tabs">
         <!-- 基础信息 -->
         <el-tab-pane label="基础信息" name="basic">
-          <el-form :model="productForm" label-width="100px" class="product-form">
-            <el-form-item label="商品名称" required>
-              <el-input v-model="productForm.name" placeholder="请输入商品名称" maxlength="60" show-word-limit />
-            </el-form-item>
-            <el-form-item label="商品分类" required>
-              <el-cascader
-                v-model="productForm.category"
-                :options="categoryOptions"
-                :props="{ checkStrictly: true }"
-                placeholder="请选择商品分类"
-                style="width: 100%"
-              />
-            </el-form-item>
-            <el-form-item label="商品卖点">
-              <el-input v-model="productForm.subtitle" placeholder="请输入商品卖点" maxlength="100" show-word-limit />
-            </el-form-item>
-            <el-form-item label="商品价格" required>
-              <el-input-number v-model="productForm.price" :min="0" :precision="2" style="width: 200px" />
-              <span class="unit">元</span>
-            </el-form-item>
-            <el-form-item label="商品库存" required>
-              <el-input-number v-model="productForm.stock" :min="0" :precision="0" style="width: 200px" />
-              <span class="unit">件</span>
-            </el-form-item>
-            <el-form-item label="商品状态">
-              <el-radio-group v-model="productForm.status">
-                <el-radio label="active">立即上架</el-radio>
-                <el-radio label="inactive">放入仓库</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-form>
+          <div class="form-section">
+            <div class="section-title">
+              <el-icon><Document /></el-icon>
+              <span>基本信息</span>
+            </div>
+            <el-form :model="productForm" label-width="100px" class="product-form">
+              <el-row :gutter="24">
+                <el-col :span="12">
+                  <el-form-item label="商品名称" required>
+                    <el-input 
+                      v-model="productForm.name" 
+                      placeholder="请输入商品名称" 
+                      maxlength="60" 
+                      show-word-limit
+                      clearable
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="商品分类" required>
+                    <el-cascader
+                      v-model="productForm.category"
+                      :options="categoryOptions"
+                      :props="{ checkStrictly: true, value: 'value', label: 'label', children: 'children' }"
+                      placeholder="请选择商品分类"
+                      style="width: 100%"
+                      clearable
+                    />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              
+              <el-form-item label="商品卖点">
+                <el-input 
+                  v-model="productForm.subtitle" 
+                  type="textarea"
+                  :rows="3"
+                  placeholder="请输入商品卖点，突出商品特色和优势，吸引用户购买" 
+                  maxlength="200" 
+                  show-word-limit
+                  class="subtitle-input"
+                />
+              </el-form-item>
+              
+              <el-divider content-position="left" class="section-divider">
+                <span class="divider-text">
+                  <el-icon><Coin /></el-icon>
+                  <span>价格与库存</span>
+                </span>
+              </el-divider>
+              
+              <el-row :gutter="24">
+                <el-col :span="8">
+                  <el-form-item label="商品价格" required>
+                    <el-input-number 
+                      v-model="productForm.price" 
+                      :min="0.01" 
+                      :precision="2" 
+                      :step="0.1"
+                      controls-position="right"
+                      style="width: 100%" 
+                    />
+                    <div class="form-tip">单位：元</div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="商品库存" required>
+                    <el-input-number 
+                      v-model="productForm.stock" 
+                      :min="0" 
+                      :precision="0" 
+                      :step="1"
+                      controls-position="right"
+                      style="width: 100%" 
+                    />
+                    <div class="form-tip">单位：件</div>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                  <el-form-item label="上架状态">
+                    <el-radio-group v-model="productForm.status" size="large">
+                      <el-radio-button label="active">立即上架</el-radio-button>
+                      <el-radio-button label="inactive">放入仓库</el-radio-button>
+                    </el-radio-group>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
         </el-tab-pane>
 
         <!-- 商品规格 -->
         <el-tab-pane label="商品规格" name="specs">
-          <div class="specs-section">
-            <div class="specs-header">
-              <el-button type="primary" size="small" @click="addSpec">
-                <el-icon><Plus /></el-icon>
-                添加规格
-              </el-button>
+          <div class="form-section">
+            <div class="section-title">
+              <el-icon><Grid /></el-icon>
+              <span>规格设置</span>
             </div>
-            <div v-for="(spec, index) in productForm.specs" :key="index" class="spec-item">
-              <div class="spec-header">
-                <el-input v-model="spec.name" placeholder="规格名称，如：颜色" style="width: 150px" />
-                <el-button type="danger" link @click="removeSpec(index)">删除</el-button>
+            <div class="specs-section">
+              <div class="specs-header">
+                <div class="header-left">
+                  <el-button type="primary" @click="addSpec">
+                    <el-icon><Plus /></el-icon>
+                    <span>添加规格项</span>
+                  </el-button>
+                  <el-tooltip content="例如：颜色、尺寸、材质等" placement="top">
+                    <el-icon class="help-icon"><InfoFilled /></el-icon>
+                  </el-tooltip>
+                </div>
               </div>
-              <div class="spec-values">
-                <el-tag
-                  v-for="(value, vIndex) in spec.values"
-                  :key="vIndex"
-                  closable
-                  @close="removeSpecValue(index, vIndex)"
-                  class="spec-tag"
-                >
-                  {{ value }}
-                </el-tag>
-                <el-input
-                  v-if="spec.valueInputVisible"
-                  v-model="spec.valueInput"
-                  ref="specValueInput"
-                  size="small"
-                  style="width: 100px"
-                  @keyup.enter="addSpecValue(index)"
-                  @blur="addSpecValue(index)"
-                />
-                <el-button v-else type="primary" link size="small" @click="showSpecValueInput(index)">
-                  <el-icon><Plus /></el-icon> 添加值
-                </el-button>
+              
+              <el-empty v-if="productForm.specs.length === 0" description="暂无规格，点击添加规格项开始设置" :image-size="120" />
+              
+              <div v-for="(spec, index) in productForm.specs" :key="index" class="spec-item">
+                <div class="spec-header">
+                  <div class="spec-title">
+                    <el-tag type="primary" effect="plain" size="large">规格 {{ index + 1 }}</el-tag>
+                    <el-input 
+                      v-model="spec.name" 
+                      placeholder="输入规格名称，如：颜色" 
+                      style="width: 200px; margin-left: 12px;"
+                      clearable
+                    />
+                  </div>
+                  <el-button type="danger" link @click="removeSpec(index)">
+                    <el-icon><Delete /></el-icon>
+                    <span>删除此规格</span>
+                  </el-button>
+                </div>
+                <div class="spec-values">
+                  <div class="values-label">规格值：</div>
+                  <div class="values-list">
+                    <el-tag
+                      v-for="(value, vIndex) in spec.values"
+                      :key="vIndex"
+                      closable
+                      @close="removeSpecValue(index, vIndex)"
+                      class="spec-tag"
+                      type="success"
+                      effect="light"
+                      size="large"
+                    >
+                      {{ value }}
+                    </el-tag>
+                    <el-input
+                      v-if="spec.valueInputVisible"
+                      v-model="spec.valueInput"
+                      ref="specValueInput"
+                      size="small"
+                      style="width: 120px"
+                      placeholder="输入后回车"
+                      @keyup.enter="addSpecValue(index)"
+                      @blur="addSpecValue(index)"
+                    />
+                    <el-button v-else type="primary" link @click="showSpecValueInput(index)">
+                      <el-icon><Plus /></el-icon> 
+                      <span>添加规格值</span>
+                    </el-button>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <!-- SKU表格 -->
-            <div v-if="productForm.specs.length > 0" class="sku-table-section">
-              <div class="sku-header">
-                <span class="sku-title">SKU列表</span>
-                <el-button type="primary" size="small" @click="generateSku">生成SKU</el-button>
+              <!-- SKU表格 -->
+              <div v-if="productForm.specs.length > 0 && productForm.skus.length > 0" class="sku-table-section">
+                <div class="sku-header">
+                  <div class="sku-title">
+                    <el-icon><List /></el-icon>
+                    <span>SKU列表</span>
+                    <el-tag type="success" effect="dark" size="large" class="sku-count">
+                      共 {{ productForm.skus.length }} 个
+                    </el-tag>
+                  </div>
+                  <el-button type="success" @click="generateSku">
+                    <el-icon><MagicStick /></el-icon>
+                    <span>重新生成SKU</span>
+                  </el-button>
+                </div>
+                <el-table 
+                  :data="productForm.skus" 
+                  border 
+                  stripe
+                  style="width: 100%" 
+                  max-height="400"
+                  :header-cell-style="{ background: '#f5f7fa', color: '#606266', fontWeight: '600' }"
+                >
+                  <el-table-column v-for="spec in productForm.specs" :key="spec.name" :label="spec.name" min-width="120" align="center">
+                    <template #default="{ row }">
+                      <el-tag type="info" effect="plain">{{ row[spec.name] }}</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="销售价格" width="150" align="center">
+                    <template #default="{ row }">
+                      <el-input-number 
+                        v-model="row.price" 
+                        :min="0.01" 
+                        :precision="2" 
+                        size="small" 
+                        controls-position="right" 
+                        style="width: 100%" 
+                      />
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="库存数量" width="150" align="center">
+                    <template #default="{ row }">
+                      <el-input-number 
+                        v-model="row.stock" 
+                        :min="0" 
+                        size="small" 
+                        controls-position="right" 
+                        style="width: 100%" 
+                      />
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="SKU编码" min-width="150" align="center">
+                    <template #default="{ row }">
+                      <el-input 
+                        v-model="row.skuCode" 
+                        size="small" 
+                        placeholder="可选，系统自动生成" 
+                        clearable 
+                      />
+                    </template>
+                  </el-table-column>
+                </el-table>
               </div>
-              <el-table :data="productForm.skus" border style="width: 100%">
-                <el-table-column v-for="spec in productForm.specs" :key="spec.name" :label="spec.name" width="120">
-                  <template #default="{ row }">
-                    {{ row[spec.name] }}
-                  </template>
-                </el-table-column>
-                <el-table-column label="价格" width="120">
-                  <template #default="{ row }">
-                    <el-input-number v-model="row.price" :min="0" :precision="2" size="small" controls-position="right" />
-                  </template>
-                </el-table-column>
-                <el-table-column label="库存" width="120">
-                  <template #default="{ row }">
-                    <el-input-number v-model="row.stock" :min="0" size="small" controls-position="right" />
-                  </template>
-                </el-table-column>
-                <el-table-column label="SKU编码" min-width="150">
-                  <template #default="{ row }">
-                    <el-input v-model="row.skuCode" size="small" placeholder="请输入SKU编码" />
-                  </template>
-                </el-table-column>
-              </el-table>
             </div>
           </div>
         </el-tab-pane>
 
         <!-- 商品图片 -->
         <el-tab-pane label="商品图片" name="images">
-          <div class="image-upload-section">
-            <el-upload
-              v-model:file-list="productForm.images"
-              action="#"
-              list-type="picture-card"
-              :auto-upload="false"
-              :limit="10"
-              accept="image/*"
-              :on-change="handleImageChange"
-              :on-remove="handleImageRemove"
-            >
-              <el-icon><Plus /></el-icon>
-            </el-upload>
-            <div class="upload-tip">最多上传10张图片，建议尺寸800x800像素，第一张为主图</div>
+          <div class="form-section">
+            <div class="section-title">
+              <el-icon><Picture /></el-icon>
+              <span>图片上传</span>
+            </div>
+            <div class="image-upload-section">
+              <div class="upload-info">
+                <el-alert
+                  title="图片上传说明"
+                  type="info"
+                  :closable="false"
+                  show-icon
+                >
+                  <template #default>
+                    <div class="alert-content">
+                      <p>• 最多上传10张图片，第一张将作为商品主图展示</p>
+                      <p>• 建议尺寸：800x800像素或更高，比例1:1</p>
+                      <p>• 支持格式：JPG、PNG、GIF，单张不超过5MB</p>
+                      <p>• 图片应清晰展示商品细节，建议使用白底或浅色背景</p>
+                    </div>
+                  </template>
+                </el-alert>
+              </div>
+              
+              <div class="upload-area">
+                <el-upload
+                  v-model:file-list="productForm.images"
+                  action="#"
+                  list-type="picture-card"
+                  :auto-upload="false"
+                  :limit="10"
+                  accept="image/*"
+                  :on-change="handleImageChange"
+                  :on-remove="handleImageRemove"
+                  multiple
+                  class="custom-upload"
+                >
+                  <div class="upload-trigger">
+                    <el-icon :size="48"><Plus /></el-icon>
+                    <div class="upload-text">点击上传</div>
+                    <div class="upload-hint">支持 JPG、PNG 格式</div>
+                  </div>
+                </el-upload>
+              </div>
+            </div>
           </div>
         </el-tab-pane>
 
         <!-- 商品详情 -->
         <el-tab-pane label="商品详情" name="detail">
-          <div class="detail-section">
-            <el-input
-              v-model="productForm.description"
-              type="textarea"
-              :rows="10"
-              placeholder="请输入商品详细描述"
-              maxlength="5000"
-              show-word-limit
-            />
+          <div class="form-section">
+            <div class="section-title">
+              <el-icon><Reading /></el-icon>
+              <span>详细描述</span>
+            </div>
+            <div class="detail-section">
+              <div class="detail-tips">
+                <el-icon><InfoFilled /></el-icon>
+                <span>详细描述可以帮助用户更好地了解商品，建议包含：商品特点、使用方法、注意事项等</span>
+              </div>
+              <el-input
+                v-model="productForm.description"
+                type="textarea"
+                :rows="15"
+                placeholder="请输入商品详细描述...&#10;&#10;建议包含以下内容：&#10;1. 商品特点和优势&#10;2. 材质和工艺说明&#10;3. 尺寸规格参数&#10;4. 使用方法和注意事项&#10;5. 售后服务承诺"
+                maxlength="5000"
+                show-word-limit
+                class="detail-textarea"
+              />
+            </div>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -266,7 +434,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
+import { Search, Plus, Document, Grid, Delete, MagicStick, Picture, InfoFilled, Reading, Coin, List } from '@element-plus/icons-vue'
 import { uploadFile, deleteFile } from "../../api/modules/file.js"
 import {
   getProductList,
@@ -801,81 +969,436 @@ onMounted(() => {
 }
 
 .product-dialog {
+  :deep(.el-dialog__header) {
+    padding: 20px 24px;
+    border-bottom: 2px solid #f0f0f0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    
+    .el-dialog__title {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .el-dialog__headerbtn {
+      .el-dialog__close {
+        color: #ffffff;
+        font-size: 20px;
+        
+        &:hover {
+          color: #f0f0f0;
+        }
+      }
+    }
+  }
+
   :deep(.el-dialog__body) {
-    padding: 20px;
+    padding: 24px;
+    max-height: 75vh;
+    overflow-y: auto;
+    background: #fafbfc;
+  }
+  
+  // 自定义标签页样式
+  .custom-tabs {
+    :deep(.el-tabs__header) {
+      margin-bottom: 20px;
+      
+      .el-tabs__item {
+        font-size: 15px;
+        font-weight: 500;
+        padding: 0 24px;
+        height: 48px;
+        line-height: 48px;
+        
+        &.is-active {
+          color: #409eff;
+          font-weight: 600;
+        }
+        
+        &:hover {
+          color: #409eff;
+        }
+      }
+    }
+    
+    :deep(.el-tabs__content) {
+      padding: 0;
+    }
+  }
+
+  // 表单分组样式
+  .form-section {
+    margin-bottom: 0;
+    padding: 24px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s;
+    
+    &:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f0f0f0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+      
+      .el-icon {
+        font-size: 22px;
+        color: #409eff;
+      }
+    }
   }
 
   .product-form {
-    .unit {
-      margin-left: 8px;
+    :deep(.el-form-item__label) {
+      font-weight: 500;
+      color: #606266;
+    }
+    
+    .subtitle-input {
+      :deep(textarea) {
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    }
+    
+    .form-tip {
+      margin-top: 6px;
+      font-size: 12px;
       color: #909399;
+      line-height: 1.5;
+      padding-left: 4px;
+    }
+  }
+  
+  // 分隔线样式
+  .section-divider {
+    margin: 24px 0;
+    
+    :deep(.el-divider__text) {
+      .divider-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #303133;
+        
+        .el-icon {
+          font-size: 18px;
+          color: #e6a23c;
+        }
+      }
     }
   }
 
   .specs-section {
     .specs-header {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+      
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        
+        .help-icon {
+          font-size: 18px;
+          color: #909399;
+          cursor: help;
+          transition: color 0.3s;
+          
+          &:hover {
+            color: #409eff;
+          }
+        }
+      }
     }
 
     .spec-item {
-      background: #f5f7fa;
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 2px solid #e8ecf1;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(to bottom, #409eff, #66b1ff);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      
+      &:hover {
+        border-color: #409eff;
+        box-shadow: 0 6px 16px rgba(64, 158, 255, 0.15);
+        transform: translateY(-2px);
+        
+        &::before {
+          opacity: 1;
+        }
+      }
 
       .spec-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
+        
+        .spec-title {
+          display: flex;
+          align-items: center;
+        }
       }
 
       .spec-values {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
+        .values-label {
+          font-size: 13px;
+          color: #606266;
+          margin-bottom: 12px;
+          font-weight: 500;
+        }
+        
+        .values-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: center;
+          min-height: 44px;
+          padding: 14px;
+          background: #f5f7fa;
+          border-radius: 8px;
+          border: 1px dashed #dcdfe6;
+          transition: all 0.3s;
+          
+          &:hover {
+            border-color: #409eff;
+            background: #ecf5ff;
+          }
 
-        .spec-tag {
-          margin: 0;
+          .spec-tag {
+            margin: 0;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+          }
         }
       }
     }
 
     .sku-table-section {
-      margin-top: 20px;
+      margin-top: 28px;
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 2px solid #e8ecf1;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 
       .sku-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #f0f0f0;
 
         .sku-title {
-          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 16px;
           font-weight: 600;
           color: #303133;
+          
+          .el-icon {
+            font-size: 20px;
+            color: #67c23a;
+          }
+          
+          .sku-count {
+            margin-left: 8px;
+            font-weight: 600;
+          }
         }
       }
     }
   }
 
   .image-upload-section {
-    .upload-tip {
-      margin-top: 12px;
-      font-size: 12px;
-      color: #909399;
+    .upload-info {
+      margin-bottom: 24px;
+      
+      :deep(.el-alert) {
+        border-radius: 10px;
+        border: 1px solid #d9ecff;
+        background: linear-gradient(135deg, #ecf5ff 0%, #f0f9ff 100%);
+        
+        .alert-content {
+          p {
+            margin: 8px 0;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #606266;
+            
+            &:first-child {
+              margin-top: 0;
+            }
+            
+            &:last-child {
+              margin-bottom: 0;
+            }
+          }
+        }
+      }
+    }
+    
+    .upload-area {
+      :deep(.custom-upload) {
+        .el-upload--picture-card {
+          width: 160px;
+          height: 160px;
+          border: 3px dashed #dcdfe6;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #fafafa 0%, #f5f7fa 100%);
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          
+          &:hover {
+            border-color: #409eff;
+            background: linear-gradient(135deg, #ecf5ff 0%, #e6f2ff 100%);
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(64, 158, 255, 0.2);
+          }
+          
+          .upload-trigger {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #8c939d;
+            
+            .el-icon {
+              margin-bottom: 12px;
+              color: #409eff;
+              transition: all 0.3s;
+            }
+            
+            .upload-text {
+              font-size: 14px;
+              font-weight: 600;
+              margin-bottom: 4px;
+              color: #606266;
+            }
+            
+            .upload-hint {
+              font-size: 12px;
+              color: #909399;
+            }
+          }
+        }
+      }
+      
+      :deep(.el-upload-list--picture-card) {
+        .el-upload-list__item {
+          border-radius: 12px;
+          overflow: hidden;
+          transition: all 0.3s;
+          border: 2px solid #e4e7ed;
+          
+          &:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border-color: #409eff;
+          }
+        }
+      }
     }
   }
 
   .detail-section {
-    min-height: 300px;
+    .detail-tips {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #ecf5ff 0%, #f0f9ff 100%);
+      border-left: 4px solid #409eff;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #409eff;
+      line-height: 1.8;
+      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+      
+      .el-icon {
+        font-size: 18px;
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+    }
+    
+    .detail-textarea {
+      :deep(textarea) {
+        font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 2;
+        font-size: 14px;
+        padding: 16px;
+        border-radius: 8px;
+        border: 2px solid #dcdfe6;
+        transition: all 0.3s;
+        
+        &:focus {
+          border-color: #409eff;
+          box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+        }
+      }
+    }
   }
 
   .dialog-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 16px;
+    padding: 20px 24px;
+    margin-top: 24px;
+    background: #ffffff;
+    border-top: 2px solid #f0f0f0;
+    border-radius: 0 0 12px 12px;
+    
+    .el-button {
+      min-width: 110px;
+      height: 40px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      transition: all 0.3s;
+      
+      &.el-button--primary {
+        background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+        border: none;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+        }
+      }
+    }
   }
 }
 </style>

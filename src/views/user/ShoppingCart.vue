@@ -192,8 +192,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ShoppingCart, Delete, Star, Goods } from '@element-plus/icons-vue'
-import NavBar from '../components/NavBar.vue'
-import { products } from '../data/products.js'
+import NavBar from '../../components/NavBar.vue'
+import { products } from '../../data/products.js'
 import {
   getCartList,
   updateCartQuantity,
@@ -202,10 +202,10 @@ import {
   deleteCartItem,
   batchDeleteCartItems,
   getCartStatistics
-} from '../api/modules/cart.js'
-import { getCouponList } from '../api/modules/coupon.js'
-import { useUserStore } from '../stores/userStore.js'
-import {getProductDetail, getRecommendedProducts} from "../api/modules/product.js";
+} from '../../api/modules/cart.js'
+import { getCouponList } from '../../api/modules/coupon.js'
+import { useUserStore } from '../../stores/userStore.js'
+import {getProductDetail, getRecommendedProducts} from "../../api/modules/product.js";
 
 const router = useRouter()
 const userStore = useUserStore()

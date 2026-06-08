@@ -46,7 +46,9 @@
 
             <div class="price-section">
               <div class="current-price-wrapper">
-                <span class="current-price">¥{{ product.price }}</span>
+                <span class="current-price">
+                  ¥{{ product.price }}
+                </span>
                 <span v-if="product.originalPrice" class="original-price">¥{{ product.originalPrice }}</span>
                 <span v-if="discount > 0" class="discount-badge">{{ discount }}% OFF</span>
               </div>
@@ -100,7 +102,9 @@
                 :max="99"
                 @change="handleQuantityChange"
               />
-              <span class="stock-info">库存 {{ product.stock || 99 }} 件</span>
+              <span class="stock-info">
+                库存 {{ product.stock || 99 }} 件
+              </span>
             </div>
 
             <!-- 操作按钮 -->
@@ -109,12 +113,13 @@
                 <el-icon><ShoppingCart /></el-icon>
                 立即购买
               </el-button>
+
               <el-button size="large" class="add-cart-btn" @click="handleAddToCart">
                 <el-icon><ShoppingCart /></el-icon>
                 加入购物车
               </el-button>
               <el-button size="large" class="favorite-btn" @click="handleAddToFavorite">
-                <el-icon><Star /></el-icon>
+                <el-icon><component :is="isFavorited ? StarFilled : Star" /></el-icon>
               </el-button>
             </div>
           </div>
@@ -215,12 +220,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Star, ShoppingCart, Ticket } from '@element-plus/icons-vue'
-import NavBar from '../components/NavBar.vue'
-import { getProductDetail } from '../api/modules/product.js'
-import { getCouponList, receiveCoupon as apiReceiveCoupon } from '../api/modules/coupon.js'
-import { addToCart } from '../api/modules/cart.js'
-import { useUserStore } from '../stores/userStore.js'
+import { Star, StarFilled, ShoppingCart } from '@element-plus/icons-vue'
+import NavBar from '../../components/NavBar.vue'
+import { getProductDetail } from '../../api/modules/product.js'
+import {getCouponList, getUserReceiveCouponList, receiveCoupon as apiReceiveCoupon} from '../../api/modules/coupon.js'
+import { addToCart } from '../../api/modules/cart.js'
+import { useUserStore } from '../../stores/userStore.js'
+import { addFavorite, removeFavorite, checkFavorite } from '../../api/modules/favorite.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -232,17 +238,22 @@ const quantity = ref(1)
 const activeTab = ref('detail')
 const loading = ref(false)
 const selectedSpecs = ref([]) // 存储选中的规格值
+const isFavorited = ref(false) // 收藏状态
 
 // 优惠券相关
 const couponDialogVisible = ref(false)
 const availableCoupons = ref([])
 const couponLoading = ref(false)
 
-// 根据商品ID获取商品信息
+// 组件挂载时
 onMounted(async () => {
   const productId = parseInt(route.params.id)
+
   if (productId) {
     await loadProductDetail(productId)
+    // 检查收藏状态
+    await checkFavoriteStatus(productId)
+
     // 加载商品详情后，检查是否有相关优惠券
     await checkAndShowCoupons()
   }
@@ -254,28 +265,35 @@ const loadProductDetail = async (productId) => {
   try {
     const res = await getProductDetail(productId)
     if (res.code === 1000 && res.data) {
+      const data = res.data
+
+      // 判断是否有活动，如果有活动则使用活动价格
+      const hasActivity = data.hasActivity && data.activityType === 1
+      const displayPrice = hasActivity && data.activityPrice ? data.activityPrice : data.price
+
       // 适配接口返回的数据结构
       product.value = {
-        id: res.data.id,
-        name: res.data.name,
-        description: res.data.description || res.data.subName,
-        price: res.data.price,
-        originalPrice: res.data.originalPrice,
-        stock: res.data.stock,
-        sales: res.data.soldCount || 0,
-        rating: res.data.rating || 5,
-        isHot: res.data.isHot === 1,
-        image: res.data.image,
-        images: res.data.images || [], // 接口返回的是数组格式
-        category: res.data.category?.name || '',
-        categoryId: res.data.categoryId,
-        merchant: res.data.merchant,
+        id: data.id,
+        name: data.name,
+        description: data.description || data.subName,
+        price: displayPrice,
+        originalPrice: data.originalPrice,
+        stock: data.stock,
+        sales: data.soldCount || 0,
+        rating: data.rating || 5,
+        isHot: data.isHot === 1,
+        isFeatured: data.isFeatured === 1,
+        image: data.image,
+        images: data.images || [], // 接口返回的是数组格式
+        category: data.category?.name || '',
+        categoryId: data.categoryId,
+        merchant: data.merchant,
         // 处理 specs，提取 values 中的 value 字段
-        specs: (res.data.specs || []).map(spec => ({
+        specs: (data.specs || []).map(spec => ({
           ...spec,
           values: (spec.values || []).map(v => v.value)
         })),
-        skus: res.data.skus || []
+        skus: data.skus || []
       }
       currentImage.value = product.value.image
 
@@ -293,6 +311,18 @@ const loadProductDetail = async (productId) => {
     ElMessage.error('加载商品详情失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 检查收藏状态
+const checkFavoriteStatus = async (productId) => {
+  try {
+    const res = await checkFavorite(productId)
+    if (res.code === 1000) {
+      isFavorited.value = res.data === true
+    }
+  } catch (error) {
+    console.error('检查收藏状态失败:', error)
   }
 }
 
@@ -440,13 +470,43 @@ const handleBuyNow = () => {
 }
 
 // 收藏
-const handleAddToFavorite = () => {
+const handleAddToFavorite = async () => {
   if (!product.value.id) {
     ElMessage.warning('商品信息加载中')
     return
   }
-  ElMessage.success('已添加到收藏夹')
-  // TODO: 调用收藏 API
+
+  // 检查用户是否登录
+  if (!userStore.isLoggedIn || !userStore.userId) {
+    ElMessage.warning('请先登录后再收藏商品')
+    router.push('/auth')
+    return
+  }
+
+  try {
+    if (isFavorited.value) {
+      // 取消收藏
+      const res = await removeFavorite(product.value.id)
+      if (res.code === 1000) {
+        ElMessage.success('已取消收藏')
+        isFavorited.value = false
+      } else {
+        ElMessage.error(res.message || '取消收藏失败')
+      }
+    } else {
+      // 添加收藏
+      const res = await addFavorite(product.value.id)
+      if (res.code === 1000) {
+        ElMessage.success('已添加到收藏夹')
+        isFavorited.value = true
+      } else {
+        ElMessage.error(res.message || '添加收藏失败')
+      }
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error)
+    ElMessage.error('收藏操作失败')
+  }
 }
 
 // 检查并显示可领取优惠券
@@ -455,10 +515,10 @@ const checkAndShowCoupons = async () => {
 
   try {
     couponLoading.value = true
-    const res = await getCouponList({
-      merchantId: product.value.merchant.id,
-      status: 1,  // 只获取启用的优惠券
-    })
+    console.log(product.value.id)
+    const res = await getUserReceiveCouponList(
+      product.value.id, product.value.merchant.id
+    )
 
     if (res.code === 1000 && res.data?.length > 0) {
       availableCoupons.value = res.data.map(item => ({

@@ -20,6 +20,23 @@ export function getCouponList(params) {
   });
 }
 
+/**获取用户可领取优惠券列表
+ *
+ * @param {number} productId - 商品ID
+ * @param {number} merchantId - 商家ID
+ * @returns {Promise}
+ */
+export function getUserReceiveCouponList(productId, merchantId) {
+  console.log(productId, merchantId);
+  return request({
+    url: `/shopping-server/coupons/product/${productId}`,
+    method: 'get',
+    params: {
+      merchantId
+    }
+  });
+}
+
 /**
  * 领取优惠券
  * @param {number} couponId - 优惠券ID（路径参数）
@@ -254,6 +271,39 @@ export function deleteSeckill(activityId, merchantId) {
 }
 
 /**
+ * 获取秒杀活动详情（商家端）
+ * @param {number} activityId - 活动ID（路径参数）
+ * @param {number} merchantId - 商家ID（查询参数）
+ * @returns {Promise}
+ */
+export function getSeckillDetail(activityId, merchantId) {
+  return request({
+    url: `/shopping-server/merchant/marketing/seckill/${activityId}`,
+    method: 'get',
+    params: { merchantId }
+  });
+}
+
+/**
+ * 更新秒杀活动状态（商家端）
+ * @param {number} activityId - 活动ID（路径参数）
+ * @param {Object} data - 状态数据
+ * @param {number} data.merchantId - 商家ID（必填）
+ * @param {number} data.status - 目标状态（0-未开始，1-进行中，2-已结束，3-已取消）
+ * @returns {Promise}
+ */
+export function updateSeckillStatus(activityId, data) {
+  return request({
+    url: `/shopping-server/merchant/marketing/seckill/${activityId}/status`,
+    method: 'put',
+    params: {
+      merchantId: data.merchantId,
+      status: data.status
+    }
+  });
+}
+
+/**
  * 获取满减活动列表（商家端）
  * @param {Object} params - 查询参数
  * @param {number} params.merchantId - 商家ID（必填）
@@ -338,6 +388,7 @@ export function deleteDiscount(activityId, merchantId) {
 }
 
 export default {
+  getUserReceiveCouponList,
   getCouponList,
   getMerchantCouponList,
   getCouponStatistics,
@@ -352,8 +403,10 @@ export default {
   createSeckill,
   updateSeckill,
   deleteSeckill,
+  getSeckillDetail,
+  updateSeckillStatus,
   getDiscountList,
   createDiscount,
   updateDiscount,
-  deleteDiscount
+  deleteDiscount,
 };

@@ -30,21 +30,27 @@
               <div class="card-header">
                 <span class="card-title">退款状态</span>
                 <el-tag :type="getStatusType(refundInfo.status)" size="large">
-                  {{ getStatusText(refundInfo.status) }}
+                  {{ refundInfo.statusText || getStatusText(refundInfo.status) }}
                 </el-tag>
               </div>
             </template>
-            
+
             <!-- 退款进度 -->
             <el-steps :active="currentStep" finish-status="success" align-center>
-              <el-step title="提交申请" :description="formatTime(refundInfo.applyTime)" />
-              <el-step 
-                title="商家审核" 
-                :description="refundInfo.auditTime || '待审核'" 
+              <el-step
+                title="提交申请"
+                :description="formatTime(refundInfo.applyTime)"
+                :status="getStepStatus(0)"
               />
-              <el-step 
-                title="退款成功" 
-                :description="refundInfo.refundTime || '待退款'" 
+              <el-step
+                title="商家审核"
+                :description="refundInfo.auditTime || (refundInfo.status === 0 ? '待审核' : '')"
+                :status="getStepStatus(1)"
+              />
+              <el-step
+                title="退款成功"
+                :description="refundInfo.refundTime || (refundInfo.status === 1 ? '待退款' : '')"
+                :status="getStepStatus(2)"
               />
             </el-steps>
           </el-card>
@@ -170,10 +176,10 @@
           <!-- 底部操作栏 -->
           <div class="bottom-actions">
             <el-button size="large" @click="goBack">返回列表</el-button>
-            <el-button 
-              v-if="refundInfo.status === 2" 
-              type="primary" 
-              size="large" 
+            <el-button
+              v-if="refundInfo.status === 2"
+              type="primary"
+              size="large"
               @click="applyAgain"
             >
               重新申请
@@ -192,9 +198,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, ArrowLeft } from '@element-plus/icons-vue'
-import NavBar from '../components/NavBar.vue'
-import { getRefundDetail as apiGetRefundDetail } from '../api/modules/order.js'
-import { getOrderDetail } from '../api/modules/order.js'
+import NavBar from '../../components/NavBar.vue'
+import { getRefundDetail as apiGetRefundDetail } from '../../api/modules/order.js'
+import { getOrderDetail } from '../../api/modules/order.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -216,16 +222,45 @@ const orderInfo = ref({
 // 计算当前步骤
 const currentStep = computed(() => {
   if (!refundInfo.value) return 0
-  
+
   const statusMap = {
-    0: 0,   // 待处理
-    1: 2,   // 已同意
-    2: 0,   // 已拒绝
-    3: 0    // 已取消
+    0: 1,   // 待处理 - 显示到提交申请，商家审核进行中
+    1: 3,   // 已同意 - 完成所有步骤
+    2: 1,   // 已拒绝 - 只显示提交申请
+    3: 0    // 已取消 - 不显示进度
   }
-  
+
   return statusMap[refundInfo.value.status] || 0
 })
+
+// 获取步骤状态
+const getStepStatus = (stepIndex) => {
+  if (!refundInfo.value) return ''
+
+  const status = refundInfo.value.status
+
+  // 步骤0: 提交申请
+  if (stepIndex === 0) {
+    if (status >= 0) return 'success' // 只要提交了就是成功
+  }
+
+  // 步骤1: 商家审核
+  if (stepIndex === 1) {
+    if (status === 0) return 'process' // 待处理 - 进行中
+    if (status === 1) return 'success' // 已同意 - 成功
+    if (status === 2) return 'error'   // 已拒绝 - 错误
+    if (status === 3) return ''        // 已取消 - 无状态
+  }
+
+  // 步骤2: 退款成功
+  if (stepIndex === 2) {
+    if (status === 1 && refundInfo.value.refundTime) return 'success' // 已退款
+    if (status === 1 && !refundInfo.value.refundTime) return 'process' // 已同意但未退款
+    return '' // 其他状态不显示
+  }
+
+  return ''
+}
 
 // 获取状态类型
 const getStatusType = (status) => {
@@ -240,6 +275,11 @@ const getStatusType = (status) => {
 
 // 获取状态文本
 const getStatusText = (status) => {
+  // 如果后端已经返回 statusText，直接使用
+  if (typeof status === 'string') {
+    return status
+  }
+
   const textMap = {
     0: '待处理',
     1: '已同意',
@@ -288,7 +328,7 @@ const loadRefundDetail = async () => {
     const res = await apiGetRefundDetail(refundId)
     if (res.code === 1000 && res.data) {
       refundInfo.value = res.data
-      
+
       // 如果有关联订单，加载订单详情
       if (res.data.orderId) {
         await loadOrderDetail(res.data.orderId)

@@ -187,10 +187,17 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" link>编辑</el-button>
-              <el-button type="danger" link>删除</el-button>
+              <el-button type="primary" link @click="openSeckillDialog(row)">编辑</el-button>
+              <el-button
+                :type="row.status === 'active' ? 'warning' : 'success'"
+                link
+                @click="toggleSeckillStatus(row)"
+              >
+                {{ row.status === 'active' ? '暂停' : '启用' }}
+              </el-button>
+              <el-button type="danger" link @click="deleteSeckillActivity(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -234,15 +241,22 @@
           <el-table-column prop="expireTime" label="结束时间" width="180" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-                {{ row.status === 'active' ? '进行中' : '已结束' }}
+              <el-tag :type="getPromotionStatusType(row.status)" size="small">
+                {{ getPromotionStatusText(row.status) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" link>编辑</el-button>
-              <el-button type="danger" link>删除</el-button>
+              <el-button type="primary" link @click="openPromotionDialog(row)">编辑</el-button>
+              <el-button
+                :type="row.status === 'active' ? 'warning' : 'success'"
+                link
+                @click="togglePromotionStatus(row)"
+              >
+                {{ row.status === 'active' ? '暂停' : '启用' }}
+              </el-button>
+              <el-button type="danger" link @click="deletePromotionActivity(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -318,6 +332,321 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 秒杀活动编辑弹窗 -->
+    <el-dialog
+      v-model="seckillDialogVisible"
+      :title="editingSeckill ? '编辑秒杀活动' : '创建秒杀活动'"
+      width="700px"
+      class="seckill-dialog"
+    >
+      <el-form :model="seckillForm" label-width="110px">
+        <!-- 基本信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Lightning /></el-icon>
+            <span>基本信息</span>
+          </div>
+          <el-form-item label="活动名称" required>
+            <el-input v-model="seckillForm.name" placeholder="请输入活动名称" maxlength="50" show-word-limit />
+          </el-form-item>
+        </div>
+
+        <!-- 商品信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Goods /></el-icon>
+            <span>商品信息</span>
+          </div>
+          <el-form-item label="选择商品" required>
+            <el-select
+              v-model="seckillForm.productId"
+              filterable
+              remote
+              reserve-keyword
+              placeholder="请输入商品名称搜索"
+              :remote-method="searchProducts"
+              :loading="productSearchLoading"
+              style="width: 100%"
+              @change="handleSelectProductById"
+            >
+              <el-option
+                v-for="item in productList"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              >
+                <div class="product-option">
+                  <img v-if="item.image" :src="item.image" class="product-thumb" />
+                  <div class="product-info">
+                    <div class="product-name">{{ item.name }}</div>
+                    <div class="product-meta">
+                      <span class="product-price">¥{{ item.price }}</span>
+                      <span class="product-stock">库存: {{ item.stock }}</span>
+                    </div>
+                  </div>
+                </div>
+              </el-option>
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="当前商品" v-if="selectedProduct">
+            <div class="selected-product-card">
+              <img v-if="selectedProduct.image" :src="selectedProduct.image" class="selected-product-image" />
+              <div class="selected-product-details">
+                <div class="selected-product-name">{{ selectedProduct.name }}</div>
+                <div class="selected-product-meta">
+                  <span>原价: ¥{{ selectedProduct.price }}</span>
+                  <span>库存: {{ selectedProduct.stock }}</span>
+                </div>
+              </div>
+            </div>
+          </el-form-item>
+
+          <!-- SKU ID 隐藏字段，后端仍会使用 -->
+          <input type="hidden" v-model="seckillForm.skuId" />
+        </div>
+
+        <!-- 价格与库存 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Coin /></el-icon>
+            <span>价格与库存</span>
+          </div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="原价" required>
+                <el-input-number 
+                  v-model="seckillForm.originalPrice" 
+                  :min="0.01" 
+                  :precision="2" 
+                  style="width: 100%" 
+                  disabled
+                />
+                <div class="form-tip">从商品信息自动获取</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="秒杀价格" required>
+                <el-input-number 
+                  v-model="seckillForm.seckillPrice" 
+                  :min="0.01" 
+                  :max="seckillForm.originalPrice" 
+                  :precision="2" 
+                  style="width: 100%" 
+                />
+                <div class="form-tip">不能高于原价</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="秒杀库存" required>
+                <el-input-number 
+                  v-model="seckillForm.stock" 
+                  :min="1" 
+                  :max="selectedProduct?.stock || 999999" 
+                  style="width: 100%" 
+                />
+                <div class="form-tip" v-if="selectedProduct">最大可用: {{ selectedProduct.stock }}</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="每人限购" required>
+                <el-input-number v-model="seckillForm.limitPerUser" :min="1" style="width: 100%" />
+                <div class="form-tip">件</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 活动时间 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Clock /></el-icon>
+            <span>活动时间</span>
+          </div>
+          <el-form-item label="活动时间" required>
+            <el-date-picker
+              v-model="seckillForm.timeRange"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              style="width: 100%"
+            />
+          </el-form-item>
+          
+          <el-form-item label="排序">
+            <el-input-number v-model="seckillForm.sort" :min="0" style="width: 100%" />
+            <div class="form-tip">数字越小越靠前</div>
+          </el-form-item>
+        </div>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="seckillDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveSeckill">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 满减活动编辑弹窗 -->
+    <el-dialog
+      v-model="promotionDialogVisible"
+      :title="editingPromotion ? '编辑满减活动' : '创建满减活动'"
+      width="700px"
+      class="promotion-dialog"
+    >
+      <el-form :model="promotionForm" label-width="110px">
+        <!-- 基本信息 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Discount /></el-icon>
+            <span>基本信息</span>
+          </div>
+          <el-form-item label="活动名称" required>
+            <el-input v-model="promotionForm.name" placeholder="请输入活动名称" maxlength="50" show-word-limit />
+          </el-form-item>
+          <el-form-item label="活动描述">
+            <el-input 
+              v-model="promotionForm.description" 
+              type="textarea" 
+              :rows="3" 
+              placeholder="请输入活动描述" 
+              maxlength="200" 
+              show-word-limit 
+            />
+          </el-form-item>
+        </div>
+
+        <!-- 优惠规则 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Coin /></el-icon>
+            <span>优惠规则</span>
+          </div>
+          <el-form-item label="优惠类型" required>
+            <el-radio-group v-model="promotionForm.discountType">
+              <el-radio :label="1">满件减</el-radio>
+              <el-radio :label="2">满额减</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="条件值" required>
+                <el-input-number 
+                  v-model="promotionForm.conditionValue" 
+                  :min="1" 
+                  style="width: 100%" 
+                />
+                <div class="form-tip">{{ promotionForm.discountType === 1 ? '件' : '元' }}</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="优惠金额" required>
+                <el-input-number 
+                  v-model="promotionForm.discountAmount" 
+                  :min="0.01" 
+                  :max="promotionForm.conditionValue * (promotionForm.discountType === 2 ? 1 : 100)" 
+                  :precision="2" 
+                  style="width: 100%" 
+                />
+                <div class="form-tip">元</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-form-item label="最高优惠">
+            <el-input-number 
+              v-model="promotionForm.maxDiscount" 
+              :min="0" 
+              :precision="2" 
+              style="width: 100%" 
+            />
+            <div class="form-tip">元（0表示不限制）</div>
+          </el-form-item>
+        </div>
+
+        <!-- 活动时间 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Clock /></el-icon>
+            <span>活动时间</span>
+          </div>
+          <el-form-item label="活动时间" required>
+            <el-date-picker
+              v-model="promotionForm.timeRange"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              style="width: 100%"
+            />
+          </el-form-item>
+        </div>
+
+        <!-- 适用范围 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Goods /></el-icon>
+            <span>适用范围</span>
+          </div>
+          <el-form-item label="适用范围" required>
+            <el-radio-group v-model="promotionForm.scopeType">
+              <el-radio label="all">全场</el-radio>
+              <el-radio label="product">指定商品</el-radio>
+              <el-radio label="category">指定分类</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="范围ID列表" v-if="promotionForm.scopeType !== 'all'">
+            <el-input 
+              v-model="promotionForm.scopeIds" 
+              type="textarea" 
+              :rows="2" 
+              placeholder="多个ID用逗号分隔，例如：1,2,3" 
+            />
+            <div class="form-tip">
+              {{ promotionForm.scopeType === 'product' ? '商品ID列表' : '分类ID列表' }}
+            </div>
+          </el-form-item>
+        </div>
+
+        <!-- 其他设置 -->
+        <div class="form-section">
+          <div class="section-title">
+            <el-icon><Setting /></el-icon>
+            <span>其他设置</span>
+          </div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="每人限用">
+                <el-input-number v-model="promotionForm.limitPerUser" :min="1" style="width: 100%" />
+                <div class="form-tip">次</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="排序">
+                <el-input-number v-model="promotionForm.sort" :min="0" style="width: 100%" />
+                <div class="form-tip">数字越小越靠前</div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="promotionDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="savePromotion">保存</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -325,13 +654,14 @@
 import {ref, reactive, onMounted, onBeforeMount} from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Ticket, Coin, User, Clock, Lightning, Discount, Plus
+  Ticket, Coin, User, Clock, Lightning, Discount, Plus, Goods, Setting
 } from '@element-plus/icons-vue'
 import { getMerchantCouponList, createCoupon, updateCoupon, deleteCoupon as apiDeleteCoupon } from "../../api/modules/coupon.js"
 import { getCouponStatistics } from "../../api/modules/coupon.js"
-import { getSeckillList, createSeckill, updateSeckill, deleteSeckill } from "../../api/modules/coupon.js"
+import { getSeckillList, createSeckill, updateSeckill, deleteSeckill, getSeckillDetail, updateSeckillStatus } from "../../api/modules/coupon.js"
 import { getDiscountList, createDiscount, updateDiscount, deleteDiscount } from "../../api/modules/coupon.js"
 import {getMerchantInfo, state as merchantState} from "../../stores/merchantStore.js"
+import { getProductList, getProductDetail } from "../../api/modules/product.js"
 
 
 // Tab
@@ -376,6 +706,43 @@ const couponForm = reactive({
   total: 100,
   limitPerUser: 1,
   dateRange: []
+})
+
+// 商品列表（用于选择）
+const productList = ref([])
+const productSearchLoading = ref(false)
+const selectedProduct = ref(null)
+
+// 秒杀活动弹窗
+const seckillDialogVisible = ref(false)
+const editingSeckill = ref(null)
+const seckillForm = reactive({
+  name: '',
+  productId: null,
+  skuId: 0,
+  seckillPrice: 0,
+  originalPrice: 0,
+  stock: 100,
+  limitPerUser: 1,
+  timeRange: [],
+  sort: 0
+})
+
+// 满减活动弹窗
+const promotionDialogVisible = ref(false)
+const editingPromotion = ref(null)
+const promotionForm = reactive({
+  name: '',
+  description: '',
+  discountType: 2,
+  conditionValue: 100,
+  discountAmount: 20,
+  maxDiscount: 0,
+  timeRange: [],
+  scopeType: 'all',
+  scopeIds: '',
+  limitPerUser: 1,
+  sort: 0
 })
 
 // 获取优惠券状态类型
@@ -456,9 +823,10 @@ const updateMarketingStats = () => {
 // 获取秒杀状态类型
 const getSeckillStatusType = (status) => {
   const typeMap = {
-    active: 'success',
-    pending: 'warning',
-    ended: 'info'
+    pending: 'warning',   // 0-未开始
+    active: 'success',    // 1-进行中
+    ended: 'info',        // 2-已结束
+    cancelled: 'danger'   // 3-已取消
   }
   return typeMap[status] || 'info'
 }
@@ -466,9 +834,32 @@ const getSeckillStatusType = (status) => {
 // 获取秒杀状态文本
 const getSeckillStatusText = (status) => {
   const textMap = {
+    pending: '未开始',
     active: '进行中',
-    pending: '即将开始',
-    ended: '已结束'
+    ended: '已结束',
+    cancelled: '已取消'
+  }
+  return textMap[status] || '未知'
+}
+
+// 获取满减活动状态类型
+const getPromotionStatusType = (status) => {
+  const typeMap = {
+    pending: 'warning',   // 0-未开始
+    active: 'success',    // 1-进行中
+    expired: 'info',      // 2-已结束
+    cancelled: 'danger'   // 3-已取消
+  }
+  return typeMap[status] || 'info'
+}
+
+// 获取满减活动状态文本
+const getPromotionStatusText = (status) => {
+  const textMap = {
+    pending: '未开始',
+    active: '进行中',
+    expired: '已结束',
+    cancelled: '已取消'
   }
   return textMap[status] || '未知'
 }
@@ -559,12 +950,12 @@ const saveCoupon = async () => {
 const toggleCouponStatus = async (coupon) => {
   try {
     const newStatus = coupon.status === 'active' ? 0 : 1  // active→0禁用, inactive→1启用
-    
+
     await updateCoupon(coupon.id, {
       merchantId: merchantInfo.id,
       status: newStatus
     })
-    
+
     ElMessage.success(newStatus === 1 ? '优惠券已启用' : '优惠券已禁用')
     // 重新加载列表
     await fetchCouponList()
@@ -683,7 +1074,7 @@ const fetchCouponStatistics = async () => {
     const res = await getCouponStatistics({
       merchantId: merchantInfo.id
     })
-    
+
     if (res.code === 1000 && res.data) {
       marketingStats.value = {
         totalCoupons: res.data.totalCoupons || 0,
@@ -708,12 +1099,152 @@ onMounted(async () => {
   ])
 })
 
-// 打开秒杀弹窗
-const openSeckillDialog = (seckill = null) => {
-  if (seckill) {
-    ElMessage.info('编辑秒杀活动功能开发中')
+// 搜索商品
+const searchProducts = async (query) => {
+  if (!query) {
+    productList.value = []
+    return
+  }
+  
+  productSearchLoading.value = true
+  try {
+    const res = await getProductList({
+      keyword: query,
+      pageNum: 1,
+      pageSize: 10
+    })
+    
+    if (res.code === 1000 && res.data) {
+      productList.value = res.data.content || []
+    }
+  } catch (error) {
+    console.error('搜索商品失败:', error)
+    ElMessage.error('搜索商品失败')
+  } finally {
+    productSearchLoading.value = false
+  }
+}
+
+// 选择商品
+const handleSelectProduct = async (product) => {
+  selectedProduct.value = product
+  seckillForm.productId = product.id
+  seckillForm.originalPrice = product.price
+  
+  // 如果有SKU，获取第一个SKU的信息
+  if (product.skus && product.skus.length > 0) {
+    seckillForm.skuId = product.skus[0].id
   } else {
-    ElMessage.info('创建秒杀活动功能开发中')
+    seckillForm.skuId = 0
+  }
+  
+  ElMessage.success(`已选择商品：${product.name}`)
+}
+
+// 通过ID选择商品（用于el-select的change事件）
+const handleSelectProductById = (productId) => {
+  const product = productList.value.find(p => p.id === productId)
+  if (product) {
+    handleSelectProduct(product)
+  }
+}
+
+// 打开秒杀弹窗
+const openSeckillDialog = async (seckill = null) => {
+  editingSeckill.value = seckill
+  productList.value = []
+  selectedProduct.value = null
+  
+  if (seckill) {
+    // 编辑模式 - 先加载商品信息
+    try {
+      const res = await getProductDetail(seckill.productId)
+      if (res.code === 1000 && res.data) {
+        selectedProduct.value = res.data
+        productList.value = [res.data]
+      }
+    } catch (error) {
+      console.error('加载商品信息失败:', error)
+    }
+    
+    Object.assign(seckillForm, {
+      name: seckill.name,
+      productId: seckill.productId,
+      skuId: seckill.skuId || 0,
+      seckillPrice: seckill.seckillPrice,
+      originalPrice: seckill.originalPrice,
+      stock: seckill.stock,
+      limitPerUser: seckill.limitPerUser || 1,
+      timeRange: [seckill.startTime, seckill.endTime],
+      sort: seckill.sort || 0
+    })
+  } else {
+    // 创建模式
+    Object.assign(seckillForm, {
+      name: '',
+      productId: null,
+      skuId: 0,
+      seckillPrice: 0,
+      originalPrice: 0,
+      stock: 100,
+      limitPerUser: 1,
+      timeRange: [],
+      sort: 0
+    })
+  }
+  seckillDialogVisible.value = true
+}
+
+// 保存秒杀活动
+const saveSeckill = async () => {
+  if (!seckillForm.name) {
+    ElMessage.warning('请输入活动名称')
+    return
+  }
+  if (!seckillForm.productId) {
+    ElMessage.warning('请选择商品')
+    return
+  }
+  if (!seckillForm.timeRange || seckillForm.timeRange.length < 2) {
+    ElMessage.warning('请选择活动时间')
+    return
+  }
+  if (seckillForm.seckillPrice <= 0) {
+    ElMessage.warning('请输入有效的秒杀价格')
+    return
+  }
+
+  try {
+    const seckillData = {
+      name: seckillForm.name,
+      productId: seckillForm.productId,
+      skuId: seckillForm.skuId,
+      seckillPrice: seckillForm.seckillPrice,
+      originalPrice: seckillForm.originalPrice,
+      stock: seckillForm.stock,
+      limitPerUser: seckillForm.limitPerUser,
+      startTime: seckillForm.timeRange[0],
+      endTime: seckillForm.timeRange[1],
+      sort: seckillForm.sort,
+      merchantId: merchantInfo.id
+    }
+
+    if (editingSeckill.value) {
+      // 更新秒杀活动
+      await updateSeckill(editingSeckill.value.id, seckillData)
+      ElMessage.success('秒杀活动更新成功')
+    } else {
+      // 创建秒杀活动
+      await createSeckill(seckillData)
+      ElMessage.success('秒杀活动创建成功')
+    }
+
+    seckillDialogVisible.value = false
+    // 重新加载列表
+    await fetchSeckillList()
+  } catch (error) {
+    console.error('保存秒杀活动失败:', error)
+    ElMessage.error('保存秒杀活动失败')
   }
 }
 
@@ -738,12 +1269,108 @@ const deleteSeckillActivity = async (seckill) => {
   }
 }
 
+// 切换秒杀活动状态
+const toggleSeckillStatus = async (seckill) => {
+  try {
+    // 根据当前状态计算目标状态
+    // 0-未开始，1-进行中，2-已结束，3-已取消
+    const newStatus = seckill.status === 'active' ? 3 : 1  // active→3取消, 其他→1进行
+
+    await updateSeckillStatus(seckill.id, {
+      merchantId: merchantInfo.id,
+      status: newStatus
+    })
+
+    ElMessage.success(newStatus === 1 ? '秒杀活动已启用' : '秒杀活动已暂停')
+    // 重新加载列表
+    await fetchSeckillList()
+  } catch (error) {
+    console.error('切换秒杀活动状态失败:', error)
+    ElMessage.error('操作失败')
+  }
+}
+
 // 打开满减弹窗
 const openPromotionDialog = (promotion = null) => {
+  editingPromotion.value = promotion
   if (promotion) {
-    ElMessage.info('编辑满减活动功能开发中')
+    // 编辑模式
+    Object.assign(promotionForm, {
+      name: promotion.name,
+      description: promotion.description || '',
+      discountType: promotion.discountType || 2,
+      conditionValue: promotion.conditionValue || 100,
+      discountAmount: promotion.discountAmount || 20,
+      maxDiscount: promotion.maxDiscount || 0,
+      timeRange: [promotion.startTime, promotion.endTime],
+      scopeType: promotion.scopeType || 'all',
+      scopeIds: promotion.scopeIds || '',
+      limitPerUser: promotion.limitPerUser || 1,
+      sort: promotion.sort || 0
+    })
   } else {
-    ElMessage.info('创建满减活动功能开发中')
+    // 创建模式
+    Object.assign(promotionForm, {
+      name: '',
+      description: '',
+      discountType: 2,
+      conditionValue: 100,
+      discountAmount: 20,
+      maxDiscount: 0,
+      timeRange: [],
+      scopeType: 'all',
+      scopeIds: '',
+      limitPerUser: 1,
+      sort: 0
+    })
+  }
+  promotionDialogVisible.value = true
+}
+
+// 保存满减活动
+const savePromotion = async () => {
+  if (!promotionForm.name) {
+    ElMessage.warning('请输入活动名称')
+    return
+  }
+  if (!promotionForm.timeRange || promotionForm.timeRange.length < 2) {
+    ElMessage.warning('请选择活动时间')
+    return
+  }
+
+  try {
+    const promotionData = {
+      name: promotionForm.name,
+      description: promotionForm.description,
+      discountType: promotionForm.discountType,
+      conditionValue: promotionForm.conditionValue,
+      discountAmount: promotionForm.discountAmount,
+      maxDiscount: promotionForm.maxDiscount,
+      startTime: promotionForm.timeRange[0],
+      endTime: promotionForm.timeRange[1],
+      scopeType: promotionForm.scopeType,
+      scopeIds: promotionForm.scopeIds,
+      limitPerUser: promotionForm.limitPerUser,
+      sort: promotionForm.sort,
+      merchantId: merchantInfo.id
+    }
+
+    if (editingPromotion.value) {
+      // 更新满减活动
+      await updateDiscount(editingPromotion.value.id, promotionData)
+      ElMessage.success('满减活动更新成功')
+    } else {
+      // 创建满减活动
+      await createDiscount(promotionData)
+      ElMessage.success('满减活动创建成功')
+    }
+
+    promotionDialogVisible.value = false
+    // 重新加载列表
+    await fetchDiscountList()
+  } catch (error) {
+    console.error('保存满减活动失败:', error)
+    ElMessage.error('保存满减活动失败')
   }
 }
 
@@ -901,5 +1528,140 @@ const handleCurrentChange = (val) => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+// 表单分组样式
+.form-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+    
+    .el-icon {
+      font-size: 18px;
+      color: #409eff;
+    }
+  }
+}
+
+// 表单提示文字
+.form-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+}
+
+// 商品选项样式
+.product-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  
+  .product-thumb {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #ebeef5;
+  }
+  
+  .product-info {
+    flex: 1;
+    min-width: 0;
+    
+    .product-name {
+      font-size: 14px;
+      color: #303133;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .product-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      
+      .product-price {
+        color: #f56c6c;
+        font-weight: 600;
+      }
+      
+      .product-stock {
+        color: #909399;
+      }
+    }
+  }
+}
+
+// 已选商品卡片
+.selected-product-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  
+  .selected-product-image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #ebeef5;
+  }
+  
+  .selected-product-details {
+    flex: 1;
+    
+    .selected-product-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #303133;
+      margin-bottom: 6px;
+    }
+    
+    .selected-product-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: #606266;
+      
+      span:first-child {
+        color: #f56c6c;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+// 秒杀活动弹窗样式
+:deep(.seckill-dialog) {
+  .el-dialog__body {
+    padding: 20px 24px;
+    max-height: 65vh;
+    overflow-y: auto;
+  }
+}
+
+// 满减活动弹窗样式
+:deep(.promotion-dialog) {
+  .el-dialog__body {
+    padding: 20px 24px;
+    max-height: 65vh;
+    overflow-y: auto;
+  }
 }
 </style>

@@ -370,11 +370,11 @@
     <el-dialog v-model="rejectDialogVisible" title="拒绝退款申请" width="500px">
       <el-form :model="rejectForm" label-width="80px">
         <el-form-item label="拒绝原因" required>
-          <el-input 
-            v-model="rejectForm.reason" 
-            type="textarea" 
-            :rows="4" 
-            placeholder="请输入拒绝原因" 
+          <el-input
+            v-model="rejectForm.reason"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入拒绝原因"
           />
         </el-form-item>
       </el-form>
@@ -405,6 +405,7 @@ import {
   rejectRefund
 } from '../../stores/merchantOrderStore'
 import { useUserStore } from '../../stores/userStore'
+import merchantStore from "../../stores/merchantStore.js";
 
 const route = useRoute()
 const router = useRouter()
@@ -438,7 +439,7 @@ const orderStats = computed(() => {
     paid: stats.pendingShipment || 0,
     shipped: stats.pendingReceipt || 0,
     completed: stats.completed || 0,
-    refund: stats.refunded || 0 // 退款数量
+    refund: (stats.refunding || 0) + (stats.refunded || 0) // 退款中 + 已退款
   }
 })
 
@@ -490,7 +491,7 @@ const getStatusText = (status) => {
   if (typeof status === 'string') {
     return status
   }
-  
+
   const textMap = {
     0: '待付款',
     1: '待发货',
@@ -516,7 +517,7 @@ const getStepIndex = (status) => {
 // Tab切换
 const handleTabChange = (tab) => {
   merchantOrderState.pagination.pageNum = 1
-  
+
   // 如果是退款/售后 tab，加载退款列表
   if (tab === 'refund') {
     loadRefunds()
@@ -528,7 +529,7 @@ const handleTabChange = (tab) => {
 // 搜索
 const handleSearch = () => {
   merchantOrderState.pagination.pageNum = 1
-  
+
   // 如果在退款 tab，搜索退款列表
   if (activeTab.value === 'refund') {
     loadRefunds()
@@ -566,14 +567,14 @@ const loadRefunds = async () => {
     pageNum: merchantOrderState.pagination.pageNum,
     pageSize: merchantOrderState.pagination.pageSize
   }
-  
+
   await fetchRefundList(params)
 }
 
 // 分页变化
 const handleSizeChange = (size) => {
   merchantOrderState.pagination.pageSize = size
-  
+
   // 根据当前 tab 加载对应的数据
   if (activeTab.value === 'refund') {
     loadRefunds()
@@ -584,7 +585,7 @@ const handleSizeChange = (size) => {
 
 const handleCurrentChange = (page) => {
   merchantOrderState.pagination.pageNum = page
-  
+
   // 根据当前 tab 加载对应的数据
   if (activeTab.value === 'refund') {
     loadRefunds()
@@ -652,7 +653,7 @@ const viewLogistics = (order) => {
     ElMessage.info('暂无物流信息')
     return
   }
-  
+
   ElMessage.info(`物流单号：${logistics.trackingNumber}，物流公司：${logistics.logisticsCompany}`)
 }
 
@@ -685,8 +686,12 @@ const handleApproveRefund = async (refund) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
-    const success = await approveRefund(refund.id)
+
+    // 获取商家ID
+    const userStore = useUserStore()
+    const merchantId = userStore.userInfo?.merchantId || userStore.userInfo?.id
+
+    const success = await approveRefund(refund.id, { merchantId })
     if (success) {
       loadRefunds()
     }
@@ -712,9 +717,16 @@ const confirmReject = async () => {
   }
 
   rejecting.value = true
-  
+
   try {
-    const success = await rejectRefund(rejectForm.refundId, rejectForm.reason)
+    // 获取商家ID
+    const userStore = useUserStore()
+    const merchantId = userStore.userInfo?.merchantId || userStore.userInfo?.id
+
+    const success = await rejectRefund(rejectForm.refundId, {
+      merchantId,
+      reason: rejectForm.reason
+    })
     if (success) {
       rejecting.value = false
       rejectDialogVisible.value = false
@@ -771,26 +783,27 @@ const getRefundStatusText = (status) => {
 // 检查 URL参数并加载数据
 onMounted(async () => {
   console.log('=== MerchantOrders 页面加载 ===')
-  
+
   // 检查登录状态
   const userStore = useUserStore()
   console.log('登录状态:', userStore.isLoggedIn)
   console.log('用户信息:', userStore.userInfo)
-  
+
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
     router.push('/auth')
     return
   }
-  
+
   if (route.query.tab) {
     activeTab.value = route.query.tab
   }
-  
+
   // 加载订单状态统计
   console.log('开始加载订单状态统计...')
+  console.log(merchantStore.merchantInfo)
   await fetchOrderStatusCount()
-  
+  console.log(merchantStore.merchantInfo)
   // 根据当前 tab 加载对应的数据
   if (activeTab.value === 'refund') {
     console.log('开始加载退款列表...')

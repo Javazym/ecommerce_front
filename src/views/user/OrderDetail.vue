@@ -83,6 +83,56 @@
             </div>
           </el-card>
 
+          <!-- 物流信息 -->
+          <el-card v-if="orderInfo.logistics && orderInfo.status >= 2" class="logistics-card" shadow="hover">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">物流信息</span>
+                <el-tag v-if="orderInfo.logistics.currentStatus" type="success" size="small">
+                  {{ orderInfo.logistics.currentStatus }}
+                </el-tag>
+              </div>
+            </template>
+            <div class="logistics-info">
+              <div class="logistics-basic">
+                <div class="info-row">
+                  <span class="label">物流公司：</span>
+                  <span class="value">{{ orderInfo.logistics.logisticsCompany || '未知' }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">运单号：</span>
+                  <span class="value">{{ orderInfo.logistics.trackingNumber || '暂无' }}</span>
+                  <el-button
+                    v-if="orderInfo.logistics.trackingNumber"
+                    type="primary"
+                    link
+                    size="small"
+                    @click="copyTrackingNumber"
+                  >
+                    <el-icon><CopyDocument /></el-icon>
+                    复制
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 物流轨迹 -->
+              <div v-if="parsedTraces.length > 0" class="logistics-traces">
+                <el-timeline>
+                  <el-timeline-item
+                    v-for="(trace, index) in parsedTraces"
+                    :key="index"
+                    :timestamp="trace.time"
+                    placement="top"
+                    :type="index === 0 ? 'primary' : ''"
+                  >
+                    {{ trace.content }}
+                  </el-timeline-item>
+                </el-timeline>
+              </div>
+              <el-empty v-else description="暂无物流轨迹信息" :image-size="80" />
+            </div>
+          </el-card>
+
           <!-- 商品列表 -->
           <el-card class="product-card" shadow="hover">
             <template #header>
@@ -220,10 +270,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, ArrowLeft, CopyDocument, Star } from '@element-plus/icons-vue'
-import NavBar from '../components/NavBar.vue'
-import ReviewModal from '../components/ReviewModal.vue'
-import { getOneOrderDetail, confirmReceipt, payOrder } from '../stores/orderStore.js'
-import { addReview } from '../api/modules/review.js'
+import NavBar from '../../components/NavBar.vue'
+import ReviewModal from '../../components/ReviewModal.vue'
+import { getOneOrderDetail, confirmReceipt, payOrder } from '../../stores/orderStore.js'
+import { addReview } from '../../api/modules/review.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -326,6 +376,26 @@ const total = computed(() => {
   return orderInfo.value.payAmount || 0
 })
 
+// 计算属性：解析物流轨迹
+const parsedTraces = computed(() => {
+  if (!orderInfo.value.logistics?.traces) return []
+
+  const traces = orderInfo.value.logistics.traces
+
+  // 如果 traces 是字符串，尝试解析为 JSON
+  if (typeof traces === 'string') {
+    try {
+      const parsed = JSON.parse(traces)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  // 如果已经是数组，直接返回
+  return Array.isArray(traces) ? traces : []
+})
+
 // 加载订单数据
 const loadOrderData = async () => {
   loading.value = true
@@ -365,6 +435,14 @@ const loadOrderData = async () => {
 const copyOrderNo = () => {
   navigator.clipboard.writeText(orderInfo.value.orderNo)
   ElMessage.success('订单号已复制到剪贴板')
+}
+
+// 复制运单号
+const copyTrackingNumber = () => {
+  if (orderInfo.value.logistics?.trackingNumber) {
+    navigator.clipboard.writeText(orderInfo.value.logistics.trackingNumber)
+    ElMessage.success('运单号已复制到剪贴板')
+  }
 }
 
 // 返回
@@ -531,7 +609,8 @@ onMounted(() => {
 
 .info-card,
 .product-card,
-.summary-card {
+.summary-card,
+.logistics-card {
   margin-bottom: 20px;
 
   .card-header {
@@ -570,6 +649,39 @@ onMounted(() => {
     .value {
       color: #303133;
       font-size: 14px;
+    }
+  }
+}
+
+.logistics-info {
+  .logistics-basic {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ebeef5;
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      gap: 8px;
+
+      .label {
+        width: 100px;
+        color: #909399;
+        font-size: 14px;
+      }
+
+      .value {
+        color: #303133;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .logistics-traces {
+    :deep(.el-timeline-item__timestamp) {
+      font-size: 12px;
+      color: #909399;
     }
   }
 }

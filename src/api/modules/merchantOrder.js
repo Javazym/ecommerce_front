@@ -62,7 +62,7 @@ export function approveRefund(refundId, data) {
   return request({
     url: `/shopping-server/merchant/orders/refunds/${refundId}/approve`,
     method: 'put',
-    data
+    params: data  // 使用params传递merchantId
   });
 }
 
@@ -78,7 +78,7 @@ export function rejectRefund(refundId, data) {
   return request({
     url: `/shopping-server/merchant/orders/refunds/${refundId}/reject`,
     method: 'put',
-    data
+    params: data  // 使用params传递merchantId和reason
   });
 }
 

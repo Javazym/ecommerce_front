@@ -135,24 +135,24 @@
 import {ref, onMounted, reactive} from 'vue'
 import { useRouter } from 'vue-router'
 import {User, Camera, List, Shop, Ticket, Setting, Star, Location} from '@element-plus/icons-vue'
-import NavBar from '../components/NavBar.vue'
-import UserProfile from '../components/user/UserProfile.vue'
-import OrderManagement from '../components/user/OrderManagement.vue'
-import MerchantApplication from '../components/user/MerchantApplication.vue'
-import FavoriteManagement from '../components/user/FavoriteManagement.vue'
-import AccountSettings from '../components/user/AccountSettings.vue'
-import CouponManagement from '../components/user/CouponManagement.vue'
-import {useUserStore} from "../stores/userStore.js"
-import orderStore from '../stores/orderStore'
-import AddressManagement from "../components/user/AddressManagement.vue";
-import user from "../api/user.js";
-import {getCurrentUser} from "../api/modules/user.js";
-import {getAddressList} from "../api/modules/address.js";
+import NavBar from '../../components/NavBar.vue'
+import UserProfile from '../../components/user/UserProfile.vue'
+import OrderManagement from '../../components/user/OrderManagement.vue'
+import MerchantApplication from '../../components/user/MerchantApplication.vue'
+import FavoriteManagement from '../../components/user/FavoriteManagement.vue'
+import AccountSettings from '../../components/user/AccountSettings.vue'
+import CouponManagement from '../../components/user/CouponManagement.vue'
+import {useUserStore} from "../../stores/userStore.js"
+import orderStore from '../../stores/orderStore.js'
+import AddressManagement from "../../components/user/AddressManagement.vue";
+import user from "../../api/user.js";
+import {getCurrentUser} from "../../api/modules/user.js";
+import {getAddressList} from "../../api/modules/address.js";
 
 const router = useRouter()
 const userStore = useUserStore()
-// 当前菜单
-const activeMenu = ref('profile')
+// 当前菜单 - 从 localStorage 读取或使用默认值
+const activeMenu = ref(localStorage.getItem('userCenterActiveMenu') || 'profile')
 
 // 订单管理组件引用
 const orderManagementRef = ref(null)
@@ -177,6 +177,8 @@ onMounted(() => {
 // 菜单选择
 const handleMenuSelect = (index) => {
   activeMenu.value = index
+  // 保存到 localStorage
+  localStorage.setItem('userCenterActiveMenu', index)
 }
 
 // 搜索

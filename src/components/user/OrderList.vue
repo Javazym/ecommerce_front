@@ -77,13 +77,6 @@
 
             <!-- 待收货 -->
             <template v-if="order.status === 2">
-              <el-button
-                size="small"
-                type="primary"
-                @click="handleAction('logistics', order)"
-              >
-                查看物流
-              </el-button>
               <el-button size="small" @click="handleAction('confirm', order)">
                 确认收货
               </el-button>
@@ -116,7 +109,6 @@
             <template v-if="order.status === 5">
               <el-button size="small" type="info" disabled>退款审核中</el-button>
               <el-button size="small" @click="goToRefundDetail(order)">退款详情</el-button>
-              <el-button size="small" @click="goToOrderDetail(order.id)">订单详情</el-button>
             </template>
 
             <!-- 已退款 -->
@@ -125,7 +117,6 @@
                 删除订单
               </el-button>
               <el-button size="small" @click="goToRefundDetail(order)">退款详情</el-button>
-              <el-button size="small" @click="goToOrderDetail(order.id)">订单详情</el-button>
             </template>
 
             <!-- 通用 -->
@@ -204,14 +195,8 @@ const goToOrderDetail = (orderId) => {
 
 // 跳转退款详情
 const goToRefundDetail = (order) => {
-  // 假设订单中有 refundId，如果没有则需要从其他地方获取
-  if (order.refundId) {
-    router.push(`/refund/${order.refundId}`)
-  } else {
-    // 如果订单中没有 refundId，可以先跳转到订单详情页查看
-    ElMessage.info('请先在订单详情中查看退款信息')
-    router.push(`/order/${order.id}`)
-  }
+  // 使用订单ID作为退款ID（后端可能使用相同的ID或需要进一步处理）
+  router.push(`/refund/${order.id}`)
 }
 </script>
 

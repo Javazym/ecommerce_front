@@ -30,6 +30,18 @@
           <el-icon><OfficeBuilding /></el-icon>
           商家入驻
         </el-button>
+        
+        <!-- AI 助手入口 -->
+        <el-tooltip content="AI 智能助手" placement="bottom">
+          <el-button 
+            class="ai-assistant-btn" 
+            @click="goToAiChat"
+          >
+            <el-icon><ChatDotRound /></el-icon>
+            <span class="ai-text">AI 助手</span>
+          </el-button>
+        </el-tooltip>
+        
         <el-badge :value="cartCount" class="cart-badge">
           <el-button :icon="ShoppingCart" circle class="action-btn" @click="goToCart" />
         </el-badge>
@@ -45,7 +57,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, ShoppingCart, Bell, User, Shop, OfficeBuilding } from '@element-plus/icons-vue'
+import { Search, ShoppingCart, Bell, User, Shop, OfficeBuilding, ChatDotRound } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -71,6 +83,10 @@ const goToUserCenter = () => {
 
 const goToMerchant = () => {
   router.push('/merchant')
+}
+
+const goToAiChat = () => {
+  router.push('/ai-chat')
 }
 </script>
 

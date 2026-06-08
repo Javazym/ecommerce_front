@@ -210,13 +210,13 @@ import {
   ShoppingCart, Location, Plus, Goods, Van, Document,
   Ticket, Edit
 } from '@element-plus/icons-vue'
-import NavBar from '../components/NavBar.vue'
-import { getProductDetail } from '../api/modules/product.js'
-import { createOrder } from '../api/modules/order.js'
-import { fetchAddresses } from '../stores/addressStore.js'
-import { state as addressState } from '../stores/addressStore.js'
-import { getUserCoupons, validateCoupon } from '../api/modules/coupon.js'
-import { useUserStore } from '../stores/userStore.js'
+import NavBar from '../../components/NavBar.vue'
+import { getProductDetail } from '../../api/modules/product.js'
+import { createOrder } from '../../api/modules/order.js'
+import { fetchAddresses } from '../../stores/addressStore.js'
+import { state as addressState } from '../../stores/addressStore.js'
+import { getUserCoupons, validateCoupon } from '../../api/modules/coupon.js'
+import { useUserStore } from '../../stores/userStore.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -271,22 +271,22 @@ const deliveryFee = computed(() => {
 
 const couponDiscount = computed(() => {
   if (selectedCoupon.value === 0) return 0
-  
+
   const coupon = availableCoupons.value.find(c => c.id === selectedCoupon.value)
   if (!coupon) return 0
-  
+
   // 检查是否满足使用门槛
   if (totalAmount.value < coupon.minAmount) {
     return 0
   }
-  
+
   let discount = 0
-  
+
   if (coupon.type === 'discount') {
     // 折扣券: value为折扣比例，如8.5表示85折
     const discountRate = coupon.value / 10
     discount = totalAmount.value * (1 - discountRate)
-    
+
     // 如果有最高优惠限制
     if (coupon.maxDiscount && discount > coupon.maxDiscount) {
       discount = coupon.maxDiscount
@@ -295,7 +295,7 @@ const couponDiscount = computed(() => {
     // 满减券: value为固定金额
     discount = coupon.value
   }
-  
+
   // 优惠金额不能超过订单总额
   return Math.min(discount, totalAmount.value)
 })
@@ -339,7 +339,7 @@ onMounted(async () => {
       router.push('/cart')
       return
     }
-    
+
     // 加载可用优惠券
     await fetchAvailableCoupons()
   } catch (error) {
@@ -436,7 +436,7 @@ const handleSubmitOrder = async () => {
           couponId: selectedCoupon.value,
           orderAmount: totalAmount.value
         })
-        
+
         if (validateRes.code !== 1000 || !validateRes.data.valid) {
           ElMessage.warning(validateRes.data.errorMessage || '优惠券不可用')
           return
@@ -500,7 +500,7 @@ const fetchAvailableCoupons = async () => {
     availableCoupons.value = []
     return
   }
-  
+
   try {
     const res = await getUserCoupons({
       userId: String(userStore.userId),
@@ -508,7 +508,7 @@ const fetchAvailableCoupons = async () => {
       pageNum: 1,
       pageSize: 50
     })
-    
+
     if (res.code === 1000 && res.data) {
       availableCoupons.value = (res.data.content || []).map(item => ({
         id: item.couponId,
@@ -531,11 +531,11 @@ const fetchAvailableCoupons = async () => {
 
 // 格式化优惠券标签
 const formatCouponLabel = (coupon) => {
-  const discountText = coupon.type === 'discount' 
-    ? `${coupon.value}折` 
+  const discountText = coupon.type === 'discount'
+    ? `${coupon.value}折`
     : `减¥${coupon.value}`
-  const conditionText = coupon.minAmount > 0 
-    ? `(满${coupon.minAmount}可用)` 
+  const conditionText = coupon.minAmount > 0
+    ? `(满${coupon.minAmount}可用)`
     : '(无门槛)'
   return `${coupon.name} - ${discountText} ${conditionText}`
 }

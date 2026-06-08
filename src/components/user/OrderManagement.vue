@@ -344,7 +344,7 @@ const handleReviewOrder = (order) => {
 const handleApplyRefund = (order) => {
   currentRefundOrder.value = order
   refundForm.orderId = order.id
-  refundForm.type = 1
+  refundForm.type = 1  // 1-仅退款, 2-退货退款
   refundForm.amount = order.payAmount || 0
   refundForm.reason = ''
   refundForm.description = ''
@@ -367,7 +367,7 @@ const confirmApplyRefund = async () => {
   
   try {
     const result = await applyRefund(refundForm.orderId, {
-      type: refundForm.type,
+      type: refundForm.type,  // 1-仅退款, 2-退货退款
       amount: refundForm.amount,
       reason: refundForm.reason,
       description: refundForm.description || refundForm.reason
@@ -375,8 +375,8 @@ const confirmApplyRefund = async () => {
     refundDialogVisible.value = false
     
     // 如果返回了退款ID，跳转到退款详情页
-    if (result && result.refundId) {
-      router.push(`/refund/${result.refundId}`)
+    if (result && result.data && result.data.id) {
+      router.push(`/refund/${result.data.id}`)
     } else {
       // 否则重新加载订单列表
       loadOrders()

@@ -222,11 +222,11 @@
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Message, Lock, User, Key, CircleCheckFilled } from '@element-plus/icons-vue'
-import user from "../api/user.js";
+import user from "../../api/user.js";
 import {useRouter} from "vue-router";
-import {getCurrentUser} from "../api/modules/user.js";
-import {useUserStore} from "../stores/userStore.js";
-import {clearAllUserData} from "../stores/clearData.js";
+import {getCurrentUser} from "../../api/modules/user.js";
+import {useUserStore} from "../../stores/userStore.js";
+import {clearAllUserData} from "../../stores/clearData.js";
 
 const userStore = useUserStore()
 // Login Tab State

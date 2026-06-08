@@ -1,11 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import ProductDetail from '../views/ProductDetail.vue'
-import ShoppingCart from '../views/ShoppingCart.vue'
-import UserCenter from '../views/UserCenter.vue'
-import Checkout from '../views/Checkout.vue'
-import OrderDetail from '../views/OrderDetail.vue'
-import RefundDetail from '../views/RefundDetail.vue'
+import HomeView from '../views/user/HomeView.vue'
+import ProductDetail from '../views/user/ProductDetail.vue'
+import SeckillProductDetail from '../views/user/SeckillProductDetail.vue'
+import SeckillCheckout from '../views/user/SeckillCheckout.vue'
+import ShoppingCart from '../views/user/ShoppingCart.vue'
+import UserCenter from '../views/user/UserCenter.vue'
+import Checkout from '../views/user/Checkout.vue'
+import OrderDetail from '../views/user/OrderDetail.vue'
+import RefundDetail from '../views/user/RefundDetail.vue'
 import MerchantLayout from '../views/merchant/MerchantLayout.vue'
 import MerchantDashboard from '../views/merchant/MerchantDashboard.vue'
 import MerchantProducts from '../views/merchant/MerchantProducts.vue'
@@ -23,6 +25,9 @@ import AdminFinance from '../views/admin/AdminFinance.vue'
 import AdminMarketing from '../views/admin/AdminMarketing.vue'
 import AdminSettings from '../views/admin/AdminSettings.vue'
 import AdminProducts from "../views/admin/AdminProducts.vue";
+import ProductReviewList from '../views/agent/ProductReviewList.vue'
+import ProductReviewDetail from '../views/agent/ProductReviewDetail.vue'
+import AiChat from '../views/agent/AiChat.vue'
 
 const routes = [
   {
@@ -33,12 +38,34 @@ const routes = [
   {
     path: '/auth',
     name: 'Auth',
-    component: () => import('../views/LoginRegister.vue')
+    component: () => import('../views/user/LoginRegister.vue')
   },
   {
     path: '/product/:id',
     name: 'ProductDetail',
     component: ProductDetail
+  },
+  {
+    path: '/seckill/:id',
+    name: 'SeckillProductDetail',
+    component: SeckillProductDetail
+  },
+  // AI Agent 商品审核路由
+  {
+    path: '/products/review',
+    name: 'ProductReviewList',
+    component: ProductReviewList
+  },
+  {
+    path: '/products/review/:id',
+    name: 'ProductReviewDetail',
+    component: ProductReviewDetail
+  },
+  // AI Agent 聊天路由
+  {
+    path: '/ai-chat',
+    name: 'AiChat',
+    component: AiChat
   },
   {
     path: '/cart',
@@ -54,6 +81,11 @@ const routes = [
     path: '/checkout',
     name: 'Checkout',
     component: Checkout
+  },
+  {
+    path: '/seckill/checkout/:activityId',
+    name: 'SeckillCheckout',
+    component: SeckillCheckout
   },
   {
     path: '/order/:id',
